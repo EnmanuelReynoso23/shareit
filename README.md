@@ -1,66 +1,225 @@
 # ShareIt - Widget & Photo Sharing App
 
-ShareIt is a React Native mobile application that allows users to create custom widgets and share photos with friends. Built with Expo, Firebase, and Redux Toolkit.
+**ShareIt** es una aplicación móvil desarrollada en React Native que permite a los usuarios crear widgets personalizados y compartir fotos con amigos en tiempo real.
 
-## 🚀 Features
+## 🏗️ Arquitectura del Proyecto
 
-### Core Features
+```text
+shareit/
+├── frontend/          # Aplicación React Native
+│   ├── src/
+│   ├── assets/
+│   ├── App.js
+│   ├── package.json
+│   └── README.md
+├── backend/           # Servicios Firebase
+│   ├── functions/     # Cloud Functions
+│   ├── firestore/     # Reglas y índices
+│   ├── storage/       # Reglas de Storage
+│   ├── config/        # Configuración Firebase
+│   ├── firebase.json
+│   └── README.md
+└── README.md         # Este archivo
 
-- **Custom Widgets**: Create and customize various widgets (Clock, Weather, Photos, Notes, Calendar, Battery)
-- **Photo Sharing**: Share photos with friends in real-time
-- **Friend System**: Add friends and manage connections
-- **User Authentication**: Secure login and registration with Firebase Auth
-- **Real-time Sync**: All data syncs across devices using Firebase Firestore
-- **Profile Management**: Customize your profile and preferences
+```
 
-### Widget Types
+## 🚀 Características Principales
 
-- **Clock Widget**: Real-time clock with date display
-- **Weather Widget**: Current weather information
-- **Photos Widget**: Display shared photos count
-- **Notes Widget**: Quick notes and reminders
-- **Calendar Widget**: Upcoming events (coming soon)
-- **Battery Widget**: Device battery status (coming soon)
+### Frontend (React Native)
 
-## 📱 Screenshots
+- **Widgets Personalizables**: Reloj, clima, fotos, notas
 
-*Screenshots will be available once the app is fully developed*
+- **Compartir Fotos**: Galería con funciones de compartir
+- **Sistema de Amigos**: Agregar y gestionar amigos
 
-## 🛠 Tech Stack
+- **Chat en Tiempo Real**: Mensajería instantánea
+- **Navegación Intuitiva**: Interfaz moderna con React Navigation
 
-- **Frontend**: React Native with Expo
-- **State Management**: Redux Toolkit
-- **Backend**: Firebase (Firestore, Auth, Storage)
-- **Navigation**: React Navigation 6
-- **UI Components**: React Native Elements, Expo Vector Icons
-- **Development**: Expo CLI
+- **Estado Global**: Manejo con Redux Toolkit
 
-## 📋 Prerequisites
+### Backend (Firebase)
 
-Before you begin, ensure you have the following installed:
+- **Autenticación**: Firebase Auth con email/password
 
-- Node.js (v16 or higher)
-- npm or yarn
-- Expo CLI (`npm install -g expo-cli`)
-- Firebase account
-- iOS Simulator (for Mac) or Android Emulator
+- **Base de Datos**: Firestore para datos en tiempo real
+- **Almacenamiento**: Cloud Storage para fotos
 
-## 🔧 Installation
+- **Funciones**: Cloud Functions para lógica del servidor
+- **Notificaciones**: Push notifications
 
-1. **Clone the repository**
+- **Seguridad**: Reglas de Firestore y Storage
+
+## 🛠 Tecnologías Utilizadas
+
+### Frontend
+
+- React Native 0.79.5
+
+- Expo SDK 53
+- Redux Toolkit
+
+- React Navigation 7
+- Firebase SDK
+
+- Expo Camera
+- Expo Image Picker
+
+### Backend
+
+- Firebase Auth
+
+- Cloud Firestore
+- Cloud Storage
+
+- Cloud Functions
+- Cloud Messaging
+
+- Firebase Analytics
+
+## 🔧 Instalación y Configuración
+
+### 1. Clonar el repositorio
+
+```bash
+git clone https://github.com/EnmanuelReynoso23/shareit.git
+cd shareit
+
+```
+
+### 2. Configurar Backend
+
+```bash
+cd backend
+npm install -g firebase-tools
+firebase login
+firebase init
+
+```
+
+### 3. Configurar Frontend
+
+```bash
+cd frontend
+npm install
+
+```
+
+### 4. Configurar Variables de Entorno
+
+```bash
+
+# Crear archivo .env en frontend/
+
+EXPO_PUBLIC_FIREBASE_API_KEY=your-api-key
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789
+EXPO_PUBLIC_FIREBASE_APP_ID=your-app-id
+
+```
+
+### 5. Ejecutar la Aplicación
+
+```bash
+
+# Ejecutar emuladores de Firebase
+
+cd backend
+firebase emulators:start
+
+# En otra terminal, ejecutar el frontend
+
+cd frontend
+npm start
+
+```
+
+## 📱 Capturas de Pantalla
+
+*Las capturas de pantalla se agregarán una vez que la aplicación esté completamente desarrollada*
+
+## � Estado de Desarrollo
+
+### ✅ Completado
+
+- Estructura base del proyecto
+
+- Configuración de Firebase
+- Navegación principal
+
+- Widgets básicos (Reloj, Clima)
+- Sistema de autenticación
+
+- Cloud Functions básicas
+- Reglas de seguridad
+
+### 🔄 En Progreso
+
+- Pantallas de autenticación
+
+- Funcionalidad de cámara
+- Sistema de amigos
+
+- Chat en tiempo real
+- Galería de fotos
+
+### 📋 Pendiente
+
+- Widgets adicionales
+
+- Notificaciones push
+- Modo offline
+
+- Optimización de rendimiento
+- Pruebas unitarias
+
+## 🤝 Contribuir
+
+1. Fork el proyecto
+2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
+
+## 📝 Licencia
+
+Este proyecto está bajo la licencia MIT. Ver el archivo [LICENSE](LICENSE) para más detalles.
+
+## 👥 Autores
+
+- **Enmanuel Reynoso** - *Desarrollador Principal* - [@EnmanuelReynoso23](https://github.com/EnmanuelReynoso23)
+
+## 🆘 Soporte
+
+Si tienes preguntas o necesitas ayuda, puedes:
+
+- Abrir un [issue](https://github.com/EnmanuelReynoso23/shareit/issues)
+- Contactar al desarrollador
+
+## � Documentación Adicional
+
+- [Documentación del Frontend](frontend/README.md)
+
+- [Documentación del Backend](backend/README.md)
+- [Guía de Configuración](backend/SETUP.md)
+
+---
+
+⭐ Si te gusta este proyecto, ¡dale una estrella en GitHub!
 
    ```bash
    git clone https://github.com/yourusername/shareit.git
    cd shareit
    ```
 
-2. **Install dependencies**
+1. **Install dependencies**
 
    ```bash
    npm install
    ```
 
-3. **Firebase Setup**
+2. **Firebase Setup**
 
    a. Go to [Firebase Console](https://console.firebase.google.com)
 
@@ -86,7 +245,7 @@ Before you begin, ensure you have the following installed:
    };
    ```
 
-4. **Firestore Security Rules**
+3. **Firestore Security Rules**
 
    Add these rules to your Firestore database:
 
@@ -179,6 +338,7 @@ shareit/
 ├── assets/                    # Images, fonts, etc.
 ├── App.js                     # Root component
 └── package.json
+
 ```
 
 ## 🔑 Key Components
@@ -186,34 +346,44 @@ shareit/
 ### Authentication Flow
 
 - Welcome Screen with app introduction
+
 - Login/Register with email and password
 - Automatic authentication state management
 
 ### Main Features
 
 - **Home Screen**: Dashboard with active widgets
+
 - **Gallery Screen**: Shared photos management
 - **Friends Screen**: Friend requests and connections
+
 - **Profile Screen**: User settings and preferences
 
 ### Widget System
 
 - Modular widget architecture
+
 - Easy to add new widget types
 - Real-time updates and synchronization
+
 - Customizable widget configurations
 
 ## 🔮 Future Enhancements
 
 - [ ] Real-time messaging system
+
 - [ ] Push notifications
 - [ ] Advanced photo editing
+
 - [ ] Widget animations and interactions
 - [ ] Dark mode support
+
 - [ ] Offline functionality
 - [ ] Widget marketplace
+
 - [ ] Group widget sharing
 - [ ] Advanced friend discovery
+
 - [ ] Widget templates
 
 ## 🤝 Contributing
@@ -236,13 +406,16 @@ shareit/
 ### Firebase Integration
 
 - All data is stored in Firestore with real-time synchronization
+
 - Images are stored in Firebase Storage
 - Authentication is handled by Firebase Auth
+
 - Security rules ensure data privacy
 
 ### State Management
 
 - Redux Toolkit for predictable state management
+
 - Separate slices for different features
 - Async thunks for Firebase operations
 
@@ -284,8 +457,10 @@ Created with ❤️ by [Your Name]
 ## 🙏 Acknowledgments
 
 - Expo team for the amazing development platform
+
 - Firebase for backend services
 - React Native community for excellent libraries
+
 - All contributors who help improve this project
 
 ---

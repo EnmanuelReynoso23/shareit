@@ -6,7 +6,7 @@ import {
   GoogleAuthProvider,
   signInWithCredential
 } from 'firebase/auth';
-import { auth } from '../../../config/firebase';
+import { auth } from '../../../backend/config/firebase';
 
 // Async thunks for authentication
 export const loginUser = createAsyncThunk(

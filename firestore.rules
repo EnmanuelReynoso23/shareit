@@ -1,0 +1,43 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can only access their own data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Widgets can be read by owner and shared users
+    match /widgets/{widgetId} {
+      allow read, write: if request.auth != null && (
+        request.auth.uid == resource.data.userId ||
+        request.auth.uid in resource.data.sharedWith
+      );
+    }
+    
+    // Photos can be read by owner and shared users
+    match /photos/{photoId} {
+      allow read, write: if request.auth != null && (
+        request.auth.uid == resource.data.userId ||
+        request.auth.uid in resource.data.sharedWith ||
+        resource.data.isPublic == true
+      );
+    }
+    
+    // Friends can be read by both users
+    match /friends/{friendshipId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid in resource.data.users;
+    }
+    
+    // Chats can be read by participants
+    match /chats/{chatId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid in resource.data.participants;
+        
+      match /messages/{messageId} {
+        allow read, write: if request.auth != null && 
+          request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+      }
+    }
+  }
+}

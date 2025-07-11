@@ -1,0 +1,17 @@
+{
+  "servers": {
+    "firebase": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "firebase-tools@latest",
+        "experimental:mcp",
+        "--dir",
+        "/workspaces/shareit",
+        "--only",
+        "auth,firestore,storage,functions,hosting"
+      ]
+    }
+  }
+}

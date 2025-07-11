@@ -1,0 +1,68 @@
+[debug] [2025-07-10T23:58:01.760Z] Checked if tokens are valid: false, expires at: 1752191813307
+[debug] [2025-07-10T23:58:01.764Z] Checked if tokens are valid: false, expires at: 1752191813307
+[debug] [2025-07-10T23:58:01.765Z] > refreshing access token with scopes: []
+[debug] [2025-07-10T23:58:01.767Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-07-10T23:58:01.767Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-07-10T23:58:01.816Z] Checked if tokens are valid: false, expires at: 1752191813307
+[debug] [2025-07-10T23:58:01.816Z] Checked if tokens are valid: false, expires at: 1752191813307
+[debug] [2025-07-10T23:58:01.816Z] > refreshing access token with scopes: []
+[debug] [2025-07-10T23:58:01.817Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-07-10T23:58:01.817Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-07-10T23:58:01.819Z] Checked if tokens are valid: false, expires at: 1752191813307
+[debug] [2025-07-10T23:58:01.819Z] Checked if tokens are valid: false, expires at: 1752191813307
+[debug] [2025-07-10T23:58:01.819Z] > refreshing access token with scopes: []
+[debug] [2025-07-10T23:58:01.820Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-07-10T23:58:01.820Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-07-10T23:58:01.912Z] Checked if tokens are valid: false, expires at: 1752191813307
+[debug] [2025-07-10T23:58:01.913Z] Checked if tokens are valid: false, expires at: 1752191813307
+[debug] [2025-07-10T23:58:01.913Z] > refreshing access token with scopes: []
+[debug] [2025-07-10T23:58:01.913Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-07-10T23:58:01.913Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-07-10T23:58:01.915Z] Checked if tokens are valid: false, expires at: 1752191813307
+[debug] [2025-07-10T23:58:01.915Z] Checked if tokens are valid: false, expires at: 1752191813307
+[debug] [2025-07-10T23:58:01.915Z] > refreshing access token with scopes: []
+[debug] [2025-07-10T23:58:01.916Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-07-10T23:58:01.916Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-07-10T23:58:01.917Z] Checked if tokens are valid: false, expires at: 1752191813307
+[debug] [2025-07-10T23:58:01.917Z] Checked if tokens are valid: false, expires at: 1752191813307
+[debug] [2025-07-10T23:58:01.917Z] > refreshing access token with scopes: []
+[debug] [2025-07-10T23:58:01.918Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-07-10T23:58:01.918Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-07-10T23:58:01.935Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-07-10T23:58:01.935Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-07-10T23:58:01.945Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/shareit-fcb52/services/firebasedataconnect.googleapis.com [none]
+[debug] [2025-07-10T23:58:01.945Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/shareit-fcb52/services/firebasedataconnect.googleapis.com x-goog-quota-user=projects/shareit-fcb52
+[debug] [2025-07-10T23:58:01.948Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-07-10T23:58:01.949Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-07-10T23:58:01.953Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/shareit-fcb52/services/firebasecrashlytics.googleapis.com [none]
+[debug] [2025-07-10T23:58:01.953Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/shareit-fcb52/services/firebasecrashlytics.googleapis.com x-goog-quota-user=projects/shareit-fcb52
+[debug] [2025-07-10T23:58:01.964Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-07-10T23:58:01.966Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-07-10T23:58:01.973Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/shareit-fcb52/services/firebaseapphosting.googleapis.com [none]
+[debug] [2025-07-10T23:58:01.973Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/shareit-fcb52/services/firebaseapphosting.googleapis.com x-goog-quota-user=projects/shareit-fcb52
+[debug] [2025-07-10T23:58:02.005Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-07-10T23:58:02.005Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-07-10T23:58:02.010Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/shareit-fcb52/services/firebaseapphosting.googleapis.com [none]
+[debug] [2025-07-10T23:58:02.010Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/shareit-fcb52/services/firebaseapphosting.googleapis.com x-goog-quota-user=projects/shareit-fcb52
+[debug] [2025-07-10T23:58:02.014Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-07-10T23:58:02.014Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-07-10T23:58:02.018Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/shareit-fcb52/services/firebasecrashlytics.googleapis.com [none]
+[debug] [2025-07-10T23:58:02.018Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/shareit-fcb52/services/firebasecrashlytics.googleapis.com x-goog-quota-user=projects/shareit-fcb52
+[debug] [2025-07-10T23:58:02.020Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-07-10T23:58:02.020Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-07-10T23:58:02.024Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/shareit-fcb52/services/firebasedataconnect.googleapis.com [none]
+[debug] [2025-07-10T23:58:02.024Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/shareit-fcb52/services/firebasedataconnect.googleapis.com x-goog-quota-user=projects/shareit-fcb52
+[debug] [2025-07-10T23:58:02.224Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/shareit-fcb52/services/firebaseapphosting.googleapis.com 200
+[debug] [2025-07-10T23:58:02.224Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/shareit-fcb52/services/firebaseapphosting.googleapis.com [omitted]
+[debug] [2025-07-10T23:58:02.225Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/shareit-fcb52/services/firebasedataconnect.googleapis.com 200
+[debug] [2025-07-10T23:58:02.225Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/shareit-fcb52/services/firebasedataconnect.googleapis.com [omitted]
+[debug] [2025-07-10T23:58:02.238Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/shareit-fcb52/services/firebasedataconnect.googleapis.com 200
+[debug] [2025-07-10T23:58:02.239Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/shareit-fcb52/services/firebasedataconnect.googleapis.com [omitted]
+[debug] [2025-07-10T23:58:02.251Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/shareit-fcb52/services/firebasecrashlytics.googleapis.com 200
+[debug] [2025-07-10T23:58:02.251Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/shareit-fcb52/services/firebasecrashlytics.googleapis.com [omitted]
+[debug] [2025-07-10T23:58:02.298Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/shareit-fcb52/services/firebasecrashlytics.googleapis.com 200
+[debug] [2025-07-10T23:58:02.300Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/shareit-fcb52/services/firebasecrashlytics.googleapis.com [omitted]
+[debug] [2025-07-10T23:58:02.510Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/shareit-fcb52/services/firebaseapphosting.googleapis.com 200
+[debug] [2025-07-10T23:58:02.510Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/shareit-fcb52/services/firebaseapphosting.googleapis.com [omitted]
+[debug] [2025-07-10T23:58:02.513Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-07-10T23:58:02.513Z] > authorizing via signed-in user (reynosoenmanuel166@gmail.com)

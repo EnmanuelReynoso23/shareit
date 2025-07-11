@@ -9,7 +9,7 @@ import {
   doc,
   deleteDoc 
 } from 'firebase/firestore';
-import { db } from '../../../config/firebase';
+import { db } from '../../../backend/config/firebase';
 
 // Widget types
 export const WIDGET_TYPES = {

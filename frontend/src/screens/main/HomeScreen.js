@@ -95,9 +95,9 @@ const HomeScreen = ({ navigation }) => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {activeWidgets.length > 0 ? (
+        {widgets.length > 0 ? (
           <View style={styles.widgetGrid}>
-            {activeWidgets.map((widget) => renderWidget(widget))}
+            {widgets.map((widget) => renderWidget(widget))}
           </View>
         ) : (
           <View style={styles.emptyState}>

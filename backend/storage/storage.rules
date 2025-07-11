@@ -1,0 +1,106 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Reglas para fotos de perfil
+    match /profile-pictures/{userId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+        request.auth.uid == userId &&
+        request.resource.size < 5 * 1024 * 1024 && // Máximo 5MB
+        request.resource.contentType.matches('image/.*');
+    }
+    
+    // Reglas para fotos compartidas
+    match /shared-photos/{userId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+        request.auth.uid == userId &&
+        request.resource.size < 10 * 1024 * 1024 && // Máximo 10MB
+        request.resource.contentType.matches('image/.*');
+    }
+    
+    // Reglas para thumbnails (solo lectura)
+    match /shared-photos/{userId}/thumb_{fileName} {
+      allow read: if request.auth != null;
+      allow write: if false; // Solo Cloud Functions pueden escribir thumbnails
+    }
+    
+    // Reglas para assets de widgets
+    match /widget-assets/{userId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+        request.auth.uid == userId &&
+        request.resource.size < 2 * 1024 * 1024 && // Máximo 2MB
+        (
+          request.resource.contentType.matches('image/.*') ||
+          request.resource.contentType.matches('application/json')
+        );
+    }
+    
+    // Reglas para archivos temporales
+    match /temp/{userId}/{fileName} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == userId &&
+        request.resource.size < 50 * 1024 * 1024; // Máximo 50MB para temporales
+    }
+    
+    // Reglas para backups (solo Cloud Functions)
+    match /backups/{path=**} {
+      allow read, write: if false; // Solo Cloud Functions
+    }
+    
+    // Reglas para assets públicos de la app
+    match /app-assets/{fileName} {
+      allow read: if true; // Públicos
+      allow write: if false; // Solo admin
+    }
+    
+    // Reglas para chat attachments
+    match /chat-attachments/{chatId}/{fileName} {
+      allow read: if request.auth != null && 
+        // Verificar que el usuario es participante del chat
+        exists(/databases/$(database)/documents/chats/$(chatId)) &&
+        request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+      
+      allow write: if request.auth != null && 
+        exists(/databases/$(database)/documents/chats/$(chatId)) &&
+        request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants &&
+        request.resource.size < 25 * 1024 * 1024; // Máximo 25MB
+    }
+    
+    // Reglas para exports de usuario
+    match /user-exports/{userId}/{fileName} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == userId;
+    }
+    
+    // Reglas por defecto - denegar todo lo demás
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+// Funciones helper para validaciones
+function isValidImageType(contentType) {
+  return contentType.matches('image/(jpeg|jpg|png|gif|webp)');
+}
+
+function isValidVideoType(contentType) {
+  return contentType.matches('video/(mp4|webm|ogg)');
+}
+
+function isValidAudioType(contentType) {
+  return contentType.matches('audio/(mp3|wav|ogg|m4a)');
+}
+
+function isValidDocumentType(contentType) {
+  return contentType.matches('application/(pdf|msword|vnd.openxmlformats-officedocument.wordprocessingml.document)');
+}
+
+function isOwnerOrParticipant(userId, chatId) {
+  return request.auth.uid == userId || 
+    (exists(/databases/$(database)/documents/chats/$(chatId)) &&
+     request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants);
+}

@@ -1,82 +1,132 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Provider } from 'react-redux';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer } from '@react-navigation/navigation';
 import { createStackNavigator } from '@react-navigation/stack';
-import { StatusBar } from 'expo-status-bar';
+import { StatusBar, View, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { onAuthStateChanged } from 'firebase/auth';
-import { useDispatch, useSelector } from 'react-redux';
+import NetInfo from '@react-native-community/netinfo';
 
+// Store
 import { store } from './src/store';
+import { AppProvider, useUI, useAuth } from './src/store/AppContext';
 import { auth } from './config/firebase';
-import { setUser } from './src/store/slices/authSlice';
-import { fetchUserProfile } from './src/store/slices/userSlice';
 
-// Import screens
+// Navigation
 import AuthNavigator from './src/navigation/AuthNavigator';
 import MainNavigator from './src/navigation/MainNavigator';
-import LoadingScreen from './src/screens/LoadingScreen';
+
+// Components
+import LoadingScreen from './src/components/LoadingScreen';
+import NotificationSystem from './src/components/NotificationSystem';
 
 const Stack = createStackNavigator();
 
 function AppContent() {
-  const dispatch = useDispatch();
-  const { isAuthenticated, loading } = useSelector((state) => state.auth);
+  const [initializing, setInitializing] = useState(true);
+  const { user, isAuthenticated, setUser, clearUser } = useAuth();
+  const { setNetworkStatus, showNotification } = useUI();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        dispatch(setUser({
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName,
-          photoURL: user.photoURL,
-        }));
-        
-        // Fetch user profile from Firestore
-        dispatch(fetchUserProfile({ uid: user.uid }));
+    // Firebase Auth State Listener
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        setUser({
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName,
+          photoURL: firebaseUser.photoURL,
+        });
       } else {
-        dispatch(setUser(null));
+        clearUser();
+      }
+      
+      if (initializing) setInitializing(false);
+    });
+
+    // Network Status Listener
+    const networkUnsubscribe = NetInfo.addEventListener(state => {
+      const status = state.isConnected ? 'online' : 'offline';
+      setNetworkStatus(status);
+      
+      if (!state.isConnected) {
+        showNotification({
+          type: 'warning',
+          title: 'Sin Conexión',
+          message: 'Verifica tu conexión a internet',
+          duration: 3000,
+        });
       }
     });
 
-    return () => unsubscribe();
-  }, [dispatch]);
+    // Cleanup
+    return () => {
+      unsubscribe();
+      networkUnsubscribe();
+    };
+  }, [initializing, setUser, clearUser, setNetworkStatus, showNotification]);
 
-  if (loading) {
-    return <LoadingScreen />;
+  // Show loading screen while checking auth state
+  if (initializing) {
+    return (
+      <LoadingScreen 
+        message="Iniciando ShareIt..."
+        showProgress={true}
+        progress={85}
+      />
+    );
   }
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator
-        screenOptions={{
-          headerShown: false,
-        }}
-      >
-        {isAuthenticated ? (
-          <Stack.Screen 
-            name="Main" 
-            component={MainNavigator} 
-          />
-        ) : (
-          <Stack.Screen 
-            name="Auth" 
-            component={AuthNavigator} 
-          />
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+    <View style={styles.container}>
+      <StatusBar 
+        barStyle="light-content" 
+        backgroundColor="#667eea" 
+        translucent={false}
+      />
+      <NavigationContainer>
+        <Stack.Navigator
+          screenOptions={{
+            headerShown: false,
+            cardStyle: { backgroundColor: '#f8fafe' },
+          }}
+        >
+          {isAuthenticated ? (
+            <Stack.Screen 
+              name="Main" 
+              component={MainNavigator}
+              options={{
+                animationTypeForReplace: !user ? 'pop' : 'push',
+              }}
+            />
+          ) : (
+            <Stack.Screen 
+              name="Auth" 
+              component={AuthNavigator} 
+            />
+          )}
+        </Stack.Navigator>
+      </NavigationContainer>
+      <NotificationSystem />
+    </View>
   );
 }
 
 export default function App() {
   return (
     <Provider store={store}>
-      <SafeAreaProvider>
-        <StatusBar style="auto" />
-        <AppContent />
-      </SafeAreaProvider>
+      <AppProvider>
+        <SafeAreaProvider>
+          <AppContent />
+        </SafeAreaProvider>
+      </AppProvider>
     </Provider>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f8fafe',
+  },
+});
