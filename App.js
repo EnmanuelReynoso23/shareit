@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Provider } from 'react-redux';
-import { NavigationContainer } from '@react-navigation/navigation';
+import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { StatusBar, View, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -17,7 +17,7 @@ import AuthNavigator from './src/navigation/AuthNavigator';
 import MainNavigator from './src/navigation/MainNavigator';
 
 // Components
-import LoadingScreen from './src/components/LoadingScreen';
+import LoadingScreen from './src/screens/LoadingScreen';
 import NotificationSystem from './src/components/NotificationSystem';
 
 const Stack = createStackNavigator();

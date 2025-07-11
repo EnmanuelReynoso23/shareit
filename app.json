@@ -67,6 +67,6 @@
     "updates": {
       "fallbackToCacheTimeout": 0
     },
-    "runtimeVersion": "exposdk:49.0.0"
+    "runtimeVersion": "exposdk:53.0.0"
   }
 }
