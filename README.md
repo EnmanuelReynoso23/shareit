@@ -27,7 +27,7 @@ shareit/
 
 ### Frontend (React Native)
 
-- **Widgets Personalizables**: Reloj, clima, fotos, notas
+- **Widgets Personalizables**: Reloj, fotos, notas
 
 - **Compartir Fotos**: Galería con funciones de compartir
 - **Sistema de Amigos**: Agregar y gestionar amigos
@@ -148,7 +148,7 @@ npm start
 - Configuración de Firebase
 - Navegación principal
 
-- Widgets básicos (Reloj, Clima)
+- Widgets básicos (Reloj)
 - Sistema de autenticación
 
 - Cloud Functions básicas

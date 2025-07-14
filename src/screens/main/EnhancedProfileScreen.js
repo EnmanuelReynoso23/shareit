@@ -29,7 +29,6 @@ const EnhancedProfileScreen = ({ navigation }) => {
   const dispatch = useDispatch();
   const { user } = useSelector(state => state.auth);
   const { photos } = useSelector(state => state.photos);
-  const { friends } = useSelector(state => state.friends);
 
   const [loading, setLoading] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -108,7 +107,6 @@ const EnhancedProfileScreen = ({ navigation }) => {
   const getStats = () => {
     return {
       photos: photos?.filter(p => p.userId === user.uid).length || 0,
-      friends: friends?.length || 0,
       widgets: 3, // placeholder
     };
   };
@@ -188,11 +186,6 @@ const EnhancedProfileScreen = ({ navigation }) => {
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>{stats.photos}</Text>
               <Text style={styles.statLabel}>Fotos</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{stats.friends}</Text>
-              <Text style={styles.statLabel}>Amigos</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>

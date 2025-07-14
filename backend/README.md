@@ -110,7 +110,7 @@ EXPO_PUBLIC_FIREBASE_APP_ID=your-app-id
 {
   id: "widget123",
   userId: "user123",
-  type: "clock", // clock, weather, photos, notes, calendar, battery
+  type: "clock", // clock, photos, notes, calendar, battery
   config: {
     theme: "dark",
     size: "medium",

@@ -159,7 +159,7 @@ function isOwnerOrShared(userId, sharedWith) {
 }
 
 function isValidWidgetType(type) {
-  return type in ['clock', 'weather', 'calendar', 'battery', 'photos', 'notes', 'reminders', 'status'];
+  return type in ['clock', 'calendar', 'battery', 'photos', 'notes', 'reminders', 'status'];
 }
 
 function isValidMessageType(type) {

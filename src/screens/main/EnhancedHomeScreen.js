@@ -27,7 +27,6 @@ const HomeScreen = ({ navigation }) => {
   const dispatch = useDispatch();
   const { user } = useSelector(state => state.auth);
   const { widgets } = useSelector(state => state.widgets);
-  const { friends } = useSelector(state => state.friends);
   const { photos } = useSelector(state => state.photos);
 
   const [loading, setLoading] = useState(true);
@@ -35,7 +34,6 @@ const HomeScreen = ({ navigation }) => {
   const [error, setError] = useState(null);
   const [stats, setStats] = useState({
     widgets: 0,
-    friends: 0,
     photos: 0,
     shared: 0,
   });
@@ -48,11 +46,10 @@ const HomeScreen = ({ navigation }) => {
     // Actualizar estadísticas cuando cambien los datos
     setStats({
       widgets: widgets?.length || 0,
-      friends: friends?.length || 0,
       photos: photos?.length || 0,
       shared: widgets?.filter(w => w.shared)?.length || 0,
     });
-  }, [widgets, friends, photos]);
+  }, [widgets, photos]);
 
   const loadHomeData = async () => {
     try {
@@ -113,9 +110,9 @@ const HomeScreen = ({ navigation }) => {
       gradient: ['#ff6b6b', '#ee5a52'],
     },
     {
-      icon: '👥',
-      title: 'Añadir Amigo',
-      onPress: () => navigation.navigate('Friends'),
+      icon: '📤',
+      title: 'Compartir Foto',
+      onPress: () => navigation.navigate('Gallery'),
       gradient: ['#4ecdc4', '#44a08d'],
     },
     {
@@ -185,7 +182,6 @@ const HomeScreen = ({ navigation }) => {
           <StatsRow
             stats={[
               { value: stats.widgets, label: 'Widgets' },
-              { value: stats.friends, label: 'Amigos' },
               { value: stats.photos, label: 'Fotos' },
               { value: stats.shared, label: 'Compartidos' },
             ]}

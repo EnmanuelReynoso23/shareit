@@ -24,7 +24,7 @@ import {
   getDownloadURL, 
   deleteObject 
 } from 'firebase/storage';
-import { db, storage } from './firebase-config.js';
+import { db, storage } from '../../config/firebase.js';
 
 // ============ USER MANAGEMENT ============
 export class UserManager {

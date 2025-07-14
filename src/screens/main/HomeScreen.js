@@ -24,13 +24,7 @@ const HomeScreen = ({ navigation }) => {
       icon: 'access-time',
       color: '#667eea',
     },
-    {
-      id: '2',
-      type: 'weather',
-      title: 'Clima',
-      icon: 'wb-sunny',
-      color: '#ff9800',
-    },
+
     {
       id: '3',
       type: 'photos',

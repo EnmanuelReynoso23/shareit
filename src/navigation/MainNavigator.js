@@ -4,12 +4,10 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { MaterialIcons } from '@expo/vector-icons';
 import HomeScreen from '../screens/main/HomeScreen';
 import GalleryScreen from '../screens/main/GalleryScreen';
-import FriendsScreen from '../screens/main/FriendsScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
 import CameraScreen from '../screens/main/CameraScreen';
 import WidgetSettingsScreen from '../screens/main/WidgetSettingsScreen';
 import PhotoDetailScreen from '../screens/main/PhotoDetailScreen';
-import ChatScreen from '../screens/main/ChatScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -41,18 +39,6 @@ const GalleryStack = () => {
   );
 };
 
-const FriendsStack = () => {
-  return (
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
-      <Stack.Screen name="FriendsMain" component={FriendsScreen} />
-      <Stack.Screen name="Chat" component={ChatScreen} />
-    </Stack.Navigator>
-  );
-};
 
 const ProfileStack = () => {
   return (
@@ -104,16 +90,6 @@ const MainNavigator = () => {
           tabBarLabel: 'Galería',
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="photo-library" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Friends"
-        component={FriendsStack}
-        options={{
-          tabBarLabel: 'Amigos',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="people" size={size} color={color} />
           ),
         }}
       />

@@ -17,7 +17,7 @@ import AuthNavigator from './src/navigation/AuthNavigator';
 import MainNavigator from './src/navigation/MainNavigator';
 
 // Components
-import LoadingScreen from './src/screens/LoadingScreen';
+import LoadingScreen from './src/components/LoadingScreen';
 import NotificationSystem from './src/components/NotificationSystem';
 
 const Stack = createStackNavigator();
