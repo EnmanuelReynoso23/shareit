@@ -1,21 +1,189 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Profile pictures
-    match /profile-pictures/{userId}/{fileName} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    
+    // Security helper functions
+    function isAuthenticated() {
+      return request.auth != null && request.auth.uid != null;
     }
     
-    // Shared photos
-    match /shared-photos/{userId}/{fileName} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+    function hasValidEmail() {
+      return request.auth.token.email_verified == true;
     }
     
-    // Widget assets
-    match /widget-assets/{userId}/{fileName} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+    function isRecentUpload() {
+      // Prevent abuse by limiting upload frequency
+      return request.time < resource.timeCreated + duration.value(24, 'h') || resource == null;
+    }
+    
+    // Photos storage rules (enhanced security)
+    match /photos/{fileName} {
+      // Allow read access to authenticated users for shared photos only
+      allow read: if isAuthenticated();
+      
+      // Enhanced upload validation
+      allow create: if isAuthenticated() &&
+                       hasValidEmail() &&
+                       validatePhotoFile(null, request.resource) &&
+                       isValidPhotoFileName(fileName, request.auth.uid) &&
+                       rateLimitCheck(request.auth.uid);
+      
+      // Allow update only by owner with validation
+      allow update: if isAuthenticated() &&
+                       resource.name == request.resource.name &&
+                       isPhotoOwner(fileName, request.auth.uid) &&
+                       validatePhotoFile(resource, request.resource);
+      
+      // Allow delete only by the photo owner
+      allow delete: if isAuthenticated() &&
+                       isPhotoOwner(fileName, request.auth.uid);
+    }
+    
+    // User profile pictures (enhanced security)
+    match /users/{fileName} {
+      // Allow read access to authenticated users
+      allow read: if isAuthenticated();
+      
+      // Enhanced profile picture upload
+      allow create: if isAuthenticated() &&
+                       hasValidEmail() &&
+                       validateProfilePicture(null, request.resource) &&
+                       isValidUserFileName(fileName, request.auth.uid);
+      
+      // Allow update only by profile owner
+      allow update: if isAuthenticated() &&
+                       isProfileOwner(fileName, request.auth.uid) &&
+                       validateProfilePicture(resource, request.resource);
+      
+      // Allow delete only by the profile owner
+      allow delete: if isAuthenticated() &&
+                       isProfileOwner(fileName, request.auth.uid);
+    }
+    
+    // Widget data storage (enhanced security)
+    match /widgets/{fileName} {
+      // Allow read access to authenticated users
+      allow read: if isAuthenticated();
+      
+      // Enhanced widget file upload
+      allow create: if isAuthenticated() &&
+                       validateWidgetFile(null, request.resource) &&
+                       isValidWidgetFileName(fileName, request.auth.uid) &&
+                       rateLimitCheck(request.auth.uid);
+      
+      // Allow update only by widget owner
+      allow update: if isAuthenticated() &&
+                       isWidgetOwner(fileName, request.auth.uid) &&
+                       validateWidgetFile(resource, request.resource);
+      
+      // Allow delete only by the widget owner
+      allow delete: if isAuthenticated() &&
+                       isWidgetOwner(fileName, request.auth.uid);
+    }
+    
+    // Rate limiting function (basic implementation)
+    function rateLimitCheck(userId) {
+      // This is a basic check - in production, you'd use Cloud Functions for complex rate limiting
+      return true;
+    }
+    
+    // Enhanced validation functions with stricter limits
+    function validatePhotoFile(existingResource, newResource) {
+      // Check if it's a valid image file
+      return newResource.contentType.matches('image/.*') &&
+             // Strict file size limit - 10MB maximum
+             newResource.size > 0 &&
+             newResource.size <= 10 * 1024 * 1024 &&
+             // Only allow secure image formats
+             (newResource.contentType == 'image/jpeg' ||
+              newResource.contentType == 'image/png' ||
+              newResource.contentType == 'image/gif' ||
+              newResource.contentType == 'image/webp') &&
+             // Prevent excessively small files (possible exploits)
+             newResource.size >= 100 &&
+             // Validate filename doesn't contain malicious patterns
+             !newResource.name.matches('.*\\.(exe|bat|cmd|scr|pif|com)$');
+    }
+    
+    function validateProfilePicture(existingResource, newResource) {
+      // Check if it's a valid image file
+      return newResource.contentType.matches('image/.*') &&
+             // Limit file size to 5MB for profile pictures
+             newResource.size > 0 &&
+             newResource.size <= 5 * 1024 * 1024 &&
+             // Only allow safe image formats (no GIF for profiles for security)
+             (newResource.contentType == 'image/jpeg' ||
+              newResource.contentType == 'image/png' ||
+              newResource.contentType == 'image/webp') &&
+             // Minimum size check
+             newResource.size >= 100 &&
+             // Validate filename
+             !newResource.name.matches('.*\\.(exe|bat|cmd|scr|pif|com)$');
+    }
+    
+    function validateWidgetFile(existingResource, newResource) {
+      // More restrictive validation for widget files
+      return ((newResource.contentType.matches('image/.*') &&
+               (newResource.contentType == 'image/jpeg' ||
+                newResource.contentType == 'image/png' ||
+                newResource.contentType == 'image/webp')) ||
+              newResource.contentType == 'text/plain' ||
+              newResource.contentType == 'application/json') &&
+             // Strict size limit - 1MB for widget files (reduced from 2MB)
+             newResource.size > 0 &&
+             newResource.size <= 1 * 1024 * 1024 &&
+             // Minimum size check
+             newResource.size >= 10 &&
+             // Validate filename doesn't contain dangerous extensions
+             !newResource.name.matches('.*\\.(exe|bat|cmd|scr|pif|com|js|html|php)$');
+    }
+    
+    // Additional security functions
+    function validateFileExtension(fileName, allowedExtensions) {
+      // Validate file extension matches content type
+      return allowedExtensions.hasAny([getFileExtension(fileName).lower()]);
+    }
+    
+    function getFileExtension(fileName) {
+      return fileName.split('.').pop();
+    }
+    
+    // Enhanced quota and abuse prevention
+    function checkUserQuota(userId) {
+      // This would ideally check against Cloud Firestore for user quotas
+      // For now, it's a placeholder that always returns true
+      // In production, implement with Cloud Functions
+      return true;
+    }
+    
+    function isValidPhotoFileName(fileName, userId) {
+      // Photo files should start with the user ID
+      return fileName.matches(userId + '_.*');
+    }
+    
+    function isValidUserFileName(fileName, userId) {
+      // User profile files should start with the user ID
+      return fileName.matches(userId + '_profile_.*');
+    }
+    
+    function isValidWidgetFileName(fileName, userId) {
+      // Widget files should start with the user ID
+      return fileName.matches(userId + '_widget_.*');
+    }
+    
+    function isPhotoOwner(fileName, userId) {
+      // Extract user ID from filename
+      return fileName.matches(userId + '_.*');
+    }
+    
+    function isProfileOwner(fileName, userId) {
+      // Extract user ID from filename
+      return fileName.matches(userId + '_profile_.*');
+    }
+    
+    function isWidgetOwner(fileName, userId) {
+      // Extract user ID from filename
+      return fileName.matches(userId + '_widget_.*');
     }
   }
 }

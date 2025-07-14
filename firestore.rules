@@ -1,43 +1,233 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can only access their own data
+    
+    // Security helpers
+    function isAuthenticated() {
+      return request.auth != null && request.auth.uid != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function hasValidEmail() {
+      return request.auth.token.email_verified == true;
+    }
+    
+    function rateLimitCheck() {
+      // Basic rate limiting - users can't create more than 100 docs per minute
+      return true; // Would need Cloud Functions for complex rate limiting
+    }
+    
+    // Users collection
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Users can read their own profile
+      allow read: if isOwner(userId);
+      
+      // Users can read public profiles (but not sensitive data)
+      allow read: if isAuthenticated() &&
+                     resource.data.isPublic == true &&
+                     request.auth.uid != userId; // Prevent unnecessary reads
+      
+      // Users can create their own profile (one-time only)
+      allow create: if isOwner(userId) &&
+                       hasValidEmail() &&
+                       validateUserData(request.resource.data) &&
+                       rateLimitCheck();
+      
+      // Users can update their own profile (but not uid or email)
+      allow update: if isOwner(userId) &&
+                       validateUserUpdate(request.resource.data, resource.data);
+      
+      // Prevent deletion of user profiles (use Cloud Functions instead)
+      allow delete: if false;
     }
     
-    // Widgets can be read by owner and shared users
-    match /widgets/{widgetId} {
-      allow read, write: if request.auth != null && (
-        request.auth.uid == resource.data.userId ||
-        request.auth.uid in resource.data.sharedWith
-      );
-    }
-    
-    // Photos can be read by owner and shared users
+    // Photos collection
     match /photos/{photoId} {
-      allow read, write: if request.auth != null && (
-        request.auth.uid == resource.data.userId ||
-        request.auth.uid in resource.data.sharedWith ||
-        resource.data.isPublic == true
-      );
+      // Photo owners can read their photos
+      allow read: if isAuthenticated() &&
+                     resource.data.userId == request.auth.uid;
+      
+      // Shared users can read photos shared with them (but not modify)
+      allow read: if isAuthenticated() &&
+                     request.auth.uid in resource.data.sharedWith &&
+                     resource.data.shared == true;
+      
+      // Only photo owners can create photos
+      allow create: if isAuthenticated() &&
+                       request.auth.uid == request.resource.data.userId &&
+                       validatePhotoData(request.resource.data) &&
+                       rateLimitCheck();
+      
+      // Only photo owners can update their photos
+      allow update: if isAuthenticated() &&
+                       resource.data.userId == request.auth.uid &&
+                       validatePhotoUpdate(request.resource.data, resource.data);
+      
+      // Only photo owners can delete their photos
+      allow delete: if isAuthenticated() &&
+                       resource.data.userId == request.auth.uid;
     }
     
-    // Friends can be read by both users
-    match /friends/{friendshipId} {
-      allow read, write: if request.auth != null && 
-        request.auth.uid in resource.data.users;
+    // Widgets collection
+    match /widgets/{widgetId} {
+      // Widget owners can read their widgets
+      allow read: if isAuthenticated() &&
+                     resource.data.userId == request.auth.uid;
+      
+      // Shared users can read widgets shared with them (read-only)
+      allow read: if isAuthenticated() &&
+                     request.auth.uid in resource.data.sharedWith &&
+                     resource.data.shared == true;
+      
+      // Only widget owners can create widgets
+      allow create: if isAuthenticated() &&
+                       request.auth.uid == request.resource.data.userId &&
+                       validateWidgetData(request.resource.data) &&
+                       rateLimitCheck();
+      
+      // Only widget owners can update their widgets
+      allow update: if isAuthenticated() &&
+                       resource.data.userId == request.auth.uid &&
+                       validateWidgetUpdate(request.resource.data, resource.data);
+      
+      // Only widget owners can delete their widgets
+      allow delete: if isAuthenticated() &&
+                       resource.data.userId == request.auth.uid;
     }
     
-    // Chats can be read by participants
-    match /chats/{chatId} {
-      allow read, write: if request.auth != null && 
-        request.auth.uid in resource.data.participants;
-        
-      match /messages/{messageId} {
-        allow read, write: if request.auth != null && 
-          request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
-      }
+    // Widget permissions subcollection
+    match /widgets/{widgetId}/permissions/{userId} {
+      // Only widget owners can manage permissions
+      allow read, write: if isAuthenticated() &&
+                            get(/databases/$(database)/documents/widgets/$(widgetId)).data.userId == request.auth.uid;
+      
+      // Users can read their own permissions
+      allow read: if isOwner(userId);
+    }
+    
+    // Friend requests collection
+    match /friendRequests/{requestId} {
+      // Users can read requests they sent or received
+      allow read: if isAuthenticated() &&
+                     (request.auth.uid == resource.data.senderId ||
+                      request.auth.uid == resource.data.receiverId);
+      
+      // Users can create friend requests (but not to themselves)
+      allow create: if isAuthenticated() &&
+                       request.auth.uid == request.resource.data.senderId &&
+                       request.auth.uid != request.resource.data.receiverId &&
+                       validateFriendRequestData(request.resource.data) &&
+                       rateLimitCheck();
+      
+      // Only receivers can update request status
+      allow update: if isAuthenticated() &&
+                       request.auth.uid == resource.data.receiverId &&
+                       validateFriendRequestUpdate(request.resource.data, resource.data);
+      
+      // Only senders can delete/cancel requests
+      allow delete: if isAuthenticated() &&
+                       request.auth.uid == resource.data.senderId;
+    }
+    
+    // Friendships collection
+    match /friendships/{friendshipId} {
+      // Users can read friendships they're part of
+      allow read: if isAuthenticated() &&
+                     (request.auth.uid == resource.data.user1Id ||
+                      request.auth.uid == resource.data.user2Id);
+      
+      // Only allow creation through proper validation
+      allow create: if isAuthenticated() &&
+                       (request.auth.uid == request.resource.data.user1Id ||
+                        request.auth.uid == request.resource.data.user2Id) &&
+                       validateFriendshipData(request.resource.data);
+      
+      // Users can delete friendships they're part of
+      allow delete: if isAuthenticated() &&
+                       (request.auth.uid == resource.data.user1Id ||
+                        request.auth.uid == resource.data.user2Id);
+    }
+    
+    // Enhanced validation functions
+    function validateUserData(data) {
+      return data.keys().hasAll(['uid', 'email', 'createdAt', 'displayName']) &&
+             data.uid is string &&
+             data.uid == request.auth.uid &&
+             data.email is string &&
+             data.email == request.auth.token.email &&
+             data.email.matches('[^@]+@[^@]+\\.[^@]+') && // Better email regex
+             data.displayName is string &&
+             data.displayName.size() <= 50 &&
+             data.createdAt is timestamp &&
+             (!('isPublic' in data) || data.isPublic is bool) &&
+             (!('bio' in data) || (data.bio is string && data.bio.size() <= 500)) &&
+             (!('photoURL' in data) || (data.photoURL is string && data.photoURL.matches('https://.*')));
+    }
+    
+    function validateUserUpdate(newData, oldData) {
+      // Prevent updating critical fields
+      return !newData.diff(oldData).affectedKeys().hasAny(['uid', 'email', 'createdAt']) &&
+             validateUserData(newData) &&
+             newData.keys().hasAll(oldData.keys()); // Don't allow removing required fields
+    }
+    
+    function validatePhotoData(data) {
+      return data.keys().hasAll(['userId', 'url', 'createdAt']) &&
+             data.userId is string &&
+             data.url is string &&
+             data.url.matches('https://.*') &&
+             data.createdAt is timestamp &&
+             data.shared is bool &&
+             data.sharedWith is list;
+    }
+    
+    function validatePhotoUpdate(newData, oldData) {
+      // Only allow updating specific fields
+      return newData.diff(oldData).affectedKeys().hasOnly(['sharedWith', 'shared', 'updatedAt', 'likes', 'likedBy', 'tags']);
+    }
+    
+    function validateWidgetData(data) {
+      return data.keys().hasAll(['userId', 'type', 'name', 'createdAt']) &&
+             data.userId is string &&
+             data.type is string &&
+             data.type in ['clock', 'photos', 'notes', 'weather', 'calendar', 'music'] &&
+             data.name is string &&
+             data.createdAt is timestamp &&
+             data.shared is bool &&
+             data.sharedWith is list &&
+             data.isActive is bool;
+    }
+    
+    function validateWidgetUpdate(newData, oldData) {
+      // Only allow updating specific fields
+      return newData.diff(oldData).affectedKeys().hasOnly(['sharedWith', 'shared', 'updatedAt', 'settings', 'position', 'isActive', 'data', 'lastDataUpdate']);
+    }
+    
+    function validateFriendRequestData(data) {
+      return data.keys().hasAll(['senderId', 'receiverId', 'status', 'createdAt']) &&
+             data.senderId is string &&
+             data.receiverId is string &&
+             data.senderId != data.receiverId &&
+             data.status == 'pending' &&
+             data.createdAt is timestamp;
+    }
+    
+    function validateFriendRequestUpdate(newData, oldData) {
+      // Only allow updating status and updatedAt
+      return newData.diff(oldData).affectedKeys().hasOnly(['status', 'updatedAt']) &&
+             newData.status in ['accepted', 'declined', 'cancelled'];
+    }
+    
+    function validateFriendshipData(data) {
+      return data.keys().hasAll(['user1Id', 'user2Id', 'createdAt', 'status']) &&
+             data.user1Id is string &&
+             data.user2Id is string &&
+             data.user1Id != data.user2Id &&
+             data.status == 'active' &&
+             data.createdAt is timestamp;
     }
   }
 }

@@ -66,3 +66,15 @@
 [debug] [2025-07-10T23:58:02.510Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/shareit-fcb52/services/firebaseapphosting.googleapis.com [omitted]
 [debug] [2025-07-10T23:58:02.513Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
 [debug] [2025-07-10T23:58:02.513Z] > authorizing via signed-in user (reynosoenmanuel166@gmail.com)
+[debug] [2025-07-14T17:36:13.948Z] No OAuth tokens found
+[debug] [2025-07-14T17:36:13.950Z] No OAuth tokens found
+[debug] [2025-07-14T17:36:13.951Z] No OAuth tokens found
+[debug] [2025-07-14T17:36:13.951Z] No OAuth tokens found
+[debug] [2025-07-14T17:36:13.952Z] No OAuth tokens found
+[debug] [2025-07-14T17:36:13.952Z] No OAuth tokens found
+[debug] [2025-07-14T17:36:13.953Z] No OAuth tokens found
+[debug] [2025-07-14T17:36:13.954Z] No OAuth tokens found
+[debug] [2025-07-14T17:36:13.954Z] No OAuth tokens found
+[debug] [2025-07-14T17:36:13.954Z] No OAuth tokens found
+[debug] [2025-07-14T17:36:13.955Z] No OAuth tokens found
+[debug] [2025-07-14T17:36:13.955Z] No OAuth tokens found

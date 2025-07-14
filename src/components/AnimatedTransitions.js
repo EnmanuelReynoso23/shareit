@@ -1,116 +1,222 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo, useCallback, memo } from 'react';
 import {
   View,
   StyleSheet,
   Animated,
   Dimensions,
+  InteractionManager,
 } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
-export const FadeTransition = ({ 
-  children, 
-  duration = 300, 
+// Performance optimizations with enhanced configs
+const ANIMATION_CONFIG = {
+  useNativeDriver: true,
+  isInteraction: false,
+  bounciness: 0,
+};
+
+const SPRING_CONFIG = {
+  tension: 100,
+  friction: 8,
+  useNativeDriver: true,
+  isInteraction: false,
+  overshootClamping: true,
+  restDisplacementThreshold: 0.001,
+  restSpeedThreshold: 0.001,
+};
+
+const FAST_TIMING_CONFIG = {
+  useNativeDriver: true,
+  isInteraction: false,
+  duration: 150,
+};
+
+// Animation pool for memory optimization
+const animationPool = {
+  values: new Map(),
+  timers: new Map(),
+  
+  getValue: (key, initialValue = 0) => {
+    if (!animationPool.values.has(key)) {
+      animationPool.values.set(key, new Animated.Value(initialValue));
+    }
+    return animationPool.values.get(key);
+  },
+  
+  clearTimer: (key) => {
+    const timer = animationPool.timers.get(key);
+    if (timer) {
+      clearTimeout(timer);
+      animationPool.timers.delete(key);
+    }
+  },
+  
+  setTimer: (key, timer) => {
+    animationPool.clearTimer(key);
+    animationPool.timers.set(key, timer);
+  },
+  
+  cleanup: () => {
+    animationPool.timers.forEach(timer => clearTimeout(timer));
+    animationPool.timers.clear();
+    // Note: We don't clear values as they might be reused
+  }
+};
+
+// Enhanced interpolation configs
+const INTERPOLATION_CONFIGS = {
+  fade: {
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  },
+  scale: {
+    inputRange: [0, 1],
+    outputRange: [0.8, 1],
+    extrapolate: 'clamp',
+  },
+  slide: {
+    inputRange: [0, 1],
+    outputRange: [50, 0],
+    extrapolate: 'clamp',
+  },
+};
+
+export const FadeTransition = memo(({
+  children,
+  duration = 200,
   delay = 0,
   style,
-  ...props 
+  ...props
 }) => {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const componentKey = useMemo(() => `fade_${Date.now()}_${Math.random()}`, []);
+  const fadeAnim = useMemo(() => animationPool.getValue(componentKey, 0), [componentKey]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
+  const startAnimation = useCallback(() => {
+    InteractionManager.runAfterInteractions(() => {
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration,
-        useNativeDriver: true,
+        ...FAST_TIMING_CONFIG,
       }).start();
-    }, delay);
+    });
+  }, [fadeAnim, duration]);
 
-    return () => clearTimeout(timer);
-  }, [fadeAnim, duration, delay]);
+  useEffect(() => {
+    if (delay > 0) {
+      const timer = setTimeout(startAnimation, delay);
+      animationPool.setTimer(componentKey, timer);
+    } else {
+      startAnimation();
+    }
+
+    return () => {
+      animationPool.clearTimer(componentKey);
+    };
+  }, [delay, startAnimation, componentKey]);
+
+  const animatedStyle = useMemo(() => ({
+    opacity: fadeAnim.interpolate(INTERPOLATION_CONFIGS.fade),
+  }), [fadeAnim]);
 
   return (
     <Animated.View
-      style={[
-        style,
-        {
-          opacity: fadeAnim,
-        },
-      ]}
+      style={[style, animatedStyle]}
       {...props}
     >
       {children}
     </Animated.View>
   );
-};
+});
 
-export const SlideInTransition = ({ 
-  children, 
+/**
+ * Componente de transición animada que desliza y desvanece su contenido desde una dirección específica.
+ *
+ * @param {Object} props - Propiedades del componente.
+ * @param {React.ReactNode} props.children - Elementos hijos a renderizar dentro de la transición.
+ * @param {'bottom'|'top'|'left'|'right'} [props.direction='bottom'] - Dirección desde la cual el contenido aparecerá.
+ * @param {number} [props.duration=300] - Duración de la animación en milisegundos.
+ * @param {number} [props.delay=0] - Retardo antes de iniciar la animación en milisegundos.
+ * @param {number} [props.distance=50] - Distancia desde la cual el contenido se desliza.
+ * @param {Object} [props.style] - Estilo adicional para el componente animado.
+ * @returns {JSX.Element} Componente animado que envuelve a los hijos.
+ */
+export const SlideInTransition = memo(({
+  children,
   direction = 'bottom', // 'bottom', 'top', 'left', 'right'
-  duration = 300, 
+  duration = 300,
   delay = 0,
   distance = 50,
   style,
-  ...props 
+  ...props
 }) => {
-  const slideAnim = useRef(new Animated.Value(distance)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const componentKey = useMemo(() => `slide_${direction}_${Date.now()}_${Math.random()}`, [direction]);
+  const slideAnim = useMemo(() => animationPool.getValue(`${componentKey}_slide`, distance), [componentKey, distance]);
+  const fadeAnim = useMemo(() => animationPool.getValue(`${componentKey}_fade`, 0), [componentKey]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
+  const getTransform = useMemo(() => {
+    const transforms = {
+      top: [{ translateY: slideAnim.interpolate({
+        inputRange: [0, distance],
+        outputRange: [0, -distance],
+        extrapolate: 'clamp',
+      }) }],
+      bottom: [{ translateY: slideAnim }],
+      left: [{ translateX: slideAnim.interpolate({
+        inputRange: [0, distance],
+        outputRange: [0, -distance],
+        extrapolate: 'clamp',
+      }) }],
+      right: [{ translateX: slideAnim }],
+    };
+    return transforms[direction] || transforms.bottom;
+  }, [slideAnim, direction, distance]);
+
+  const startAnimation = useCallback(() => {
+    InteractionManager.runAfterInteractions(() => {
       Animated.parallel([
         Animated.timing(slideAnim, {
           toValue: 0,
           duration,
-          useNativeDriver: true,
+          ...ANIMATION_CONFIG,
         }),
         Animated.timing(fadeAnim, {
           toValue: 1,
           duration,
-          useNativeDriver: true,
+          ...ANIMATION_CONFIG,
         }),
       ]).start();
-    }, delay);
+    });
+  }, [slideAnim, fadeAnim, duration]);
 
-    return () => clearTimeout(timer);
-  }, [slideAnim, fadeAnim, duration, delay, distance]);
-
-  const getTransform = () => {
-    switch (direction) {
-      case 'top':
-        return [{ translateY: slideAnim.interpolate({
-          inputRange: [0, distance],
-          outputRange: [0, -distance],
-        }) }];
-      case 'bottom':
-        return [{ translateY: slideAnim }];
-      case 'left':
-        return [{ translateX: slideAnim.interpolate({
-          inputRange: [0, distance],
-          outputRange: [0, -distance],
-        }) }];
-      case 'right':
-        return [{ translateX: slideAnim }];
-      default:
-        return [{ translateY: slideAnim }];
+  useEffect(() => {
+    if (delay > 0) {
+      const timer = setTimeout(startAnimation, delay);
+      animationPool.setTimer(componentKey, timer);
+    } else {
+      startAnimation();
     }
-  };
+
+    return () => {
+      animationPool.clearTimer(componentKey);
+    };
+  }, [delay, startAnimation, componentKey]);
+
+  const animatedStyle = useMemo(() => ({
+    opacity: fadeAnim,
+    transform: getTransform,
+  }), [fadeAnim, getTransform]);
 
   return (
     <Animated.View
-      style={[
-        style,
-        {
-          opacity: fadeAnim,
-          transform: getTransform(),
-        },
-      ]}
+      style={[style, animatedStyle]}
       {...props}
     >
       {children}
     </Animated.View>
   );
-};
+});
 
 export const ScaleTransition = ({ 
   children, 
@@ -201,49 +307,68 @@ export const StaggeredTransition = ({
   );
 };
 
-export const PulseTransition = ({ 
-  children, 
+export const PulseTransition = memo(({
+  children,
   duration = 1000,
   minOpacity = 0.5,
   maxOpacity = 1,
   style,
-  ...props 
+  ...props
 }) => {
-  const pulseAnim = useRef(new Animated.Value(minOpacity)).current;
+  const componentKey = useMemo(() => `pulse_${Date.now()}_${Math.random()}`, []);
+  const pulseAnim = useMemo(() => animationPool.getValue(componentKey, minOpacity), [componentKey, minOpacity]);
+  const animationRef = useRef(null);
+
+  const pulse = useCallback(() => {
+    if (animationRef.current) {
+      animationRef.current.stop();
+    }
+    
+    animationRef.current = Animated.sequence([
+      Animated.timing(pulseAnim, {
+        toValue: maxOpacity,
+        duration: duration / 2,
+        ...ANIMATION_CONFIG,
+      }),
+      Animated.timing(pulseAnim, {
+        toValue: minOpacity,
+        duration: duration / 2,
+        ...ANIMATION_CONFIG,
+      }),
+    ]);
+    
+    animationRef.current.start(({ finished }) => {
+      if (finished) {
+        pulse();
+      }
+    });
+  }, [pulseAnim, duration, minOpacity, maxOpacity]);
 
   useEffect(() => {
-    const pulse = () => {
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: maxOpacity,
-          duration: duration / 2,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: minOpacity,
-          duration: duration / 2,
-          useNativeDriver: true,
-        }),
-      ]).start(() => pulse());
-    };
+    InteractionManager.runAfterInteractions(() => {
+      pulse();
+    });
 
-    pulse();
-  }, [pulseAnim, duration, minOpacity, maxOpacity]);
+    return () => {
+      if (animationRef.current) {
+        animationRef.current.stop();
+      }
+    };
+  }, [pulse]);
+
+  const animatedStyle = useMemo(() => ({
+    opacity: pulseAnim,
+  }), [pulseAnim]);
 
   return (
     <Animated.View
-      style={[
-        style,
-        {
-          opacity: pulseAnim,
-        },
-      ]}
+      style={[style, animatedStyle]}
       {...props}
     >
       {children}
     </Animated.View>
   );
-};
+});
 
 export const FlipTransition = ({ 
   children, 

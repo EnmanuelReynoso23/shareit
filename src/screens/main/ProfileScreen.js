@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,13 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  TextInput,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  Animated,
+  Vibration,
+  ActivityIndicator,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { signOut } from 'firebase/auth';
@@ -15,6 +22,325 @@ import { useAuth } from '../../store/AppContext';
 
 const ProfileScreen = ({ navigation }) => {
   const { user, clearUser } = useAuth();
+  
+  // Edit profile state
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [editingProfile, setEditingProfile] = useState({
+    displayName: user?.displayName || '',
+    email: user?.email || '',
+    bio: '',
+    phone: '',
+  });
+  const [validationErrors, setValidationErrors] = useState({});
+  const [fieldStatus, setFieldStatus] = useState({}); // success, error, validating
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [formTouched, setFormTouched] = useState({});
+  
+  // Refs for animations and timeouts
+  const validationTimeouts = useRef({});
+  const inputRefs = useRef({});
+  const shakeAnimations = useRef({});
+  const successAnimations = useRef({});
+  
+  // Initialize animations
+  useEffect(() => {
+    Object.keys(editingProfile).forEach(field => {
+      shakeAnimations.current[field] = new Animated.Value(0);
+      successAnimations.current[field] = new Animated.Value(0);
+    });
+  }, []);
+  
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(validationTimeouts.current).forEach(timeout => {
+        if (timeout) clearTimeout(timeout);
+      });
+    };
+  }, []);
+
+  // Enhanced validation functions with animations
+  const validateField = useCallback((field, value) => {
+    switch (field) {
+      case 'displayName':
+        if (!value.trim()) return 'El nombre es requerido';
+        if (value.trim().length < 2) return 'El nombre debe tener al menos 2 caracteres';
+        if (value.trim().length > 50) return 'El nombre no puede tener más de 50 caracteres';
+        if (!/^[a-zA-ZÀ-ÿ\s]+$/.test(value.trim())) return 'El nombre solo puede contener letras';
+        return null;
+      
+      case 'email':
+        if (!value.trim()) return 'El email es requerido';
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(value)) return 'Email inválido';
+        // Check for common email providers
+        const domain = value.split('@')[1]?.toLowerCase();
+        if (domain && !['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com'].includes(domain)) {
+          // Just a warning, not an error
+        }
+        return null;
+      
+      case 'phone':
+        if (value && value.length > 0) {
+          const cleanPhone = value.replace(/[\s\-\(\)]/g, '');
+          const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+          if (!phoneRegex.test(cleanPhone)) {
+            return 'Formato de teléfono inválido';
+          }
+          if (cleanPhone.length < 10) {
+            return 'El teléfono debe tener al menos 10 dígitos';
+          }
+        }
+        return null;
+      
+      case 'bio':
+        if (value && value.length > 150) {
+          return 'La biografía no puede tener más de 150 caracteres';
+        }
+        return null;
+      
+      default:
+        return null;
+    }
+  }, []);
+
+  // Animated validation
+  const triggerShakeAnimation = useCallback((field) => {
+    if (shakeAnimations.current[field]) {
+      Animated.sequence([
+        Animated.timing(shakeAnimations.current[field], {
+          toValue: 10,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shakeAnimations.current[field], {
+          toValue: -10,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shakeAnimations.current[field], {
+          toValue: 0,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+      ]).start();
+      
+      if (Platform.OS === 'ios') {
+        Vibration.vibrate([0, 100]);
+      }
+    }
+  }, []);
+
+  const triggerSuccessAnimation = useCallback((field) => {
+    if (successAnimations.current[field]) {
+      Animated.sequence([
+        Animated.timing(successAnimations.current[field], {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(successAnimations.current[field], {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, []);
+
+  const validateForm = useCallback(() => {
+    const errors = {};
+    const status = {};
+    
+    Object.keys(editingProfile).forEach(field => {
+      const error = validateField(field, editingProfile[field]);
+      if (error) {
+        errors[field] = error;
+        status[field] = 'error';
+        triggerShakeAnimation(field);
+      } else if (formTouched[field]) {
+        status[field] = 'success';
+        triggerSuccessAnimation(field);
+      }
+    });
+    
+    setValidationErrors(errors);
+    setFieldStatus(status);
+    return Object.keys(errors).length === 0;
+  }, [editingProfile, validateField, formTouched, triggerShakeAnimation, triggerSuccessAnimation]);
+
+  // Enhanced field change handler with debounced validation
+  const handleFieldChange = useCallback((field, value) => {
+    setEditingProfile(prev => ({ ...prev, [field]: value }));
+    setFormTouched(prev => ({ ...prev, [field]: true }));
+    setHasUnsavedChanges(true);
+    
+    // Clear previous timeout
+    if (validationTimeouts.current[field]) {
+      clearTimeout(validationTimeouts.current[field]);
+    }
+    
+    // Set validating status
+    setFieldStatus(prev => ({ ...prev, [field]: 'validating' }));
+    
+    // Clear previous error for this field
+    if (validationErrors[field]) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+    
+    // Debounced validation
+    validationTimeouts.current[field] = setTimeout(() => {
+      const error = validateField(field, value);
+      if (error) {
+        setValidationErrors(prev => ({ ...prev, [field]: error }));
+        setFieldStatus(prev => ({ ...prev, [field]: 'error' }));
+        triggerShakeAnimation(field);
+      } else {
+        setFieldStatus(prev => ({ ...prev, [field]: 'success' }));
+        triggerSuccessAnimation(field);
+      }
+    }, 600);
+  }, [validateField, validationErrors, triggerShakeAnimation, triggerSuccessAnimation]);
+
+  // Handle field blur
+  const handleFieldBlur = useCallback((field) => {
+    const error = validateField(field, editingProfile[field]);
+    if (error) {
+      setValidationErrors(prev => ({ ...prev, [field]: error }));
+      setFieldStatus(prev => ({ ...prev, [field]: 'error' }));
+    } else if (formTouched[field]) {
+      setFieldStatus(prev => ({ ...prev, [field]: 'success' }));
+    }
+  }, [editingProfile, validateField, formTouched]);
+
+  // Handle field focus
+  const handleFieldFocus = useCallback((field) => {
+    setFieldStatus(prev => ({ ...prev, [field]: 'focus' }));
+  }, []);
+
+  // Open edit modal with reset
+  const openEditModal = useCallback(() => {
+    setEditingProfile({
+      displayName: user?.displayName || '',
+      email: user?.email || '',
+      bio: user?.bio || '',
+      phone: user?.phone || '',
+    });
+    setValidationErrors({});
+    setFieldStatus({});
+    setFormTouched({});
+    setHasUnsavedChanges(false);
+    setIsEditModalVisible(true);
+  }, [user]);
+
+  // Close edit modal with unsaved changes check
+  const closeEditModal = useCallback(() => {
+    if (hasUnsavedChanges) {
+      Alert.alert(
+        'Cambios sin guardar',
+        '¿Estás seguro que quieres cerrar sin guardar los cambios?',
+        [
+          { text: 'Continuar editando', style: 'cancel' },
+          {
+            text: 'Descartar cambios',
+            style: 'destructive',
+            onPress: () => {
+              setIsEditModalVisible(false);
+              setValidationErrors({});
+              setFieldStatus({});
+              setFormTouched({});
+              setHasUnsavedChanges(false);
+            }
+          }
+        ]
+      );
+    } else {
+      setIsEditModalVisible(false);
+      setValidationErrors({});
+      setFieldStatus({});
+      setFormTouched({});
+    }
+  }, [hasUnsavedChanges]);
+
+  // Enhanced save profile with better error handling
+  const saveProfile = useCallback(async () => {
+    if (!validateForm()) {
+      Alert.alert(
+        'Formulario incompleto',
+        'Por favor corrige los errores marcados en rojo antes de continuar.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      // Simulate API call with progress
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Here you would update the user profile via API
+      console.log('Profile updated:', editingProfile);
+      
+      Alert.alert(
+        'Perfil actualizado',
+        'Tus cambios han sido guardados exitosamente.',
+        [{
+          text: 'OK',
+          onPress: () => {
+            setHasUnsavedChanges(false);
+            setIsEditModalVisible(false);
+            setValidationErrors({});
+            setFieldStatus({});
+            setFormTouched({});
+          }
+        }]
+      );
+    } catch (error) {
+      Alert.alert(
+        'Error al guardar',
+        'No se pudo actualizar el perfil. Inténtalo de nuevo.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [editingProfile, validateForm]);
+
+  // Get field status icon
+  const getFieldStatusIcon = useCallback((field) => {
+    const status = fieldStatus[field];
+    switch (status) {
+      case 'validating':
+        return <ActivityIndicator size="small" color="#667eea" />;
+      case 'success':
+        return <MaterialIcons name="check-circle" size={20} color="#4caf50" />;
+      case 'error':
+        return <MaterialIcons name="error" size={20} color="#f44336" />;
+      default:
+        return null;
+    }
+  }, [fieldStatus]);
+
+  // Get field border color
+  const getFieldBorderColor = useCallback((field) => {
+    const status = fieldStatus[field];
+    switch (status) {
+      case 'focus':
+        return '#667eea';
+      case 'success':
+        return '#4caf50';
+      case 'error':
+        return '#f44336';
+      default:
+        return '#e0e0e0';
+    }
+  }, [fieldStatus]);
 
   const handleLogout = () => {
     Alert.alert(
@@ -44,7 +370,7 @@ const ProfileScreen = ({ navigation }) => {
       title: 'Editar Perfil',
       icon: 'edit',
       color: '#667eea',
-      onPress: () => Alert.alert('Funcionalidad', 'Editar perfil en desarrollo'),
+      onPress: openEditModal,
     },
     {
       id: '2',
@@ -158,6 +484,119 @@ const ProfileScreen = ({ navigation }) => {
           <Text style={styles.versionText}>ShareIt v1.0.0</Text>
         </View>
       </ScrollView>
+
+      {/* Edit Profile Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isEditModalVisible}
+        onRequestClose={closeEditModal}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Editar Perfil</Text>
+              <TouchableOpacity onPress={closeEditModal}>
+                <MaterialIcons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              {/* Display Name Field */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Nombre</Text>
+                <TextInput
+                  style={[styles.textInput, validationErrors.displayName && styles.inputError]}
+                  value={editingProfile.displayName}
+                  onChangeText={(value) => handleFieldChange('displayName', value)}
+                  placeholder="Ingresa tu nombre"
+                  maxLength={50}
+                />
+                {validationErrors.displayName && (
+                  <Text style={styles.errorText}>{validationErrors.displayName}</Text>
+                )}
+              </View>
+
+              {/* Email Field */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Email</Text>
+                <TextInput
+                  style={[styles.textInput, validationErrors.email && styles.inputError]}
+                  value={editingProfile.email}
+                  onChangeText={(value) => handleFieldChange('email', value)}
+                  placeholder="Ingresa tu email"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+                {validationErrors.email && (
+                  <Text style={styles.errorText}>{validationErrors.email}</Text>
+                )}
+              </View>
+
+              {/* Phone Field */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Teléfono (opcional)</Text>
+                <TextInput
+                  style={[styles.textInput, validationErrors.phone && styles.inputError]}
+                  value={editingProfile.phone}
+                  onChangeText={(value) => handleFieldChange('phone', value)}
+                  placeholder="Ingresa tu teléfono"
+                  keyboardType="phone-pad"
+                />
+                {validationErrors.phone && (
+                  <Text style={styles.errorText}>{validationErrors.phone}</Text>
+                )}
+              </View>
+
+              {/* Bio Field */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Biografía (opcional)</Text>
+                <TextInput
+                  style={[styles.textInput, styles.textArea, validationErrors.bio && styles.inputError]}
+                  value={editingProfile.bio}
+                  onChangeText={(value) => handleFieldChange('bio', value)}
+                  placeholder="Cuéntanos sobre ti..."
+                  multiline
+                  numberOfLines={3}
+                  maxLength={150}
+                />
+                <Text style={styles.characterCount}>
+                  {editingProfile.bio.length}/150
+                </Text>
+                {validationErrors.bio && (
+                  <Text style={styles.errorText}>{validationErrors.bio}</Text>
+                )}
+              </View>
+            </ScrollView>
+
+            {/* Modal Actions */}
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={closeEditModal}
+                disabled={isLoading}
+              >
+                <Text style={styles.cancelButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.modalButton, styles.saveButton]}
+                onPress={saveProfile}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <Text style={styles.saveButtonText}>Guardando...</Text>
+                ) : (
+                  <Text style={styles.saveButtonText}>Guardar</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 };

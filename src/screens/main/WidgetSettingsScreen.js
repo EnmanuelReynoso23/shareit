@@ -13,6 +13,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 const WidgetSettingsScreen = ({ navigation }) => {
   const [widgetStates, setWidgetStates] = React.useState({
     clock: true,
+    weather: true,
     photos: false,
     notes: true,
   });
@@ -33,7 +34,14 @@ const WidgetSettingsScreen = ({ navigation }) => {
       icon: 'access-time',
       color: '#667eea',
     },
-
+    {
+      id: '2',
+      type: 'weather',
+      title: 'Widget de Clima',
+      description: 'Información meteorológica actual',
+      icon: 'wb-sunny',
+      color: '#ff9800',
+    },
     {
       id: '3',
       type: 'photos',

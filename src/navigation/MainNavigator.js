@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { MaterialIcons } from '@expo/vector-icons';
+import { View, Text, Platform } from 'react-native';
 import HomeScreen from '../screens/main/HomeScreen';
 import GalleryScreen from '../screens/main/GalleryScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
@@ -52,7 +53,82 @@ const ProfileStack = () => {
   );
 };
 
+// Enhanced Tab Icon Component with error handling
+const TabIcon = ({ iconName, color, size, fallbackText }) => {
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    // Reset error state when props change
+    setHasError(false);
+  }, [iconName, color, size]);
+
+  const handleIconError = () => {
+    console.warn(`Icon rendering failed for: ${iconName}`);
+    setHasError(true);
+  };
+
+  if (hasError) {
+    return (
+      <View
+        style={{
+          width: size || 24,
+          height: size || 24,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: color || '#757575',
+          borderRadius: (size || 24) / 2,
+        }}
+      >
+        <Text
+          style={{
+            color: '#ffffff',
+            fontSize: Math.max(8, (size || 24) * 0.4),
+            fontWeight: '600',
+            textAlign: 'center',
+          }}
+        >
+          {fallbackText}
+        </Text>
+      </View>
+    );
+  }
+
+  try {
+    return (
+      <MaterialIcons 
+        name={iconName} 
+        size={size || 24} 
+        color={color || '#757575'}
+        onError={handleIconError}
+      />
+    );
+  } catch (error) {
+    console.warn(`MaterialIcons error for ${iconName}:`, error);
+    setHasError(true);
+    return null;
+  }
+};
+
 const MainNavigator = () => {
+  const [iconsLoaded, setIconsLoaded] = useState(false);
+
+  useEffect(() => {
+    // Preload icon fonts
+    const loadIcons = async () => {
+      try {
+        // Give time for fonts to load
+        setTimeout(() => {
+          setIconsLoaded(true);
+        }, 100);
+      } catch (error) {
+        console.warn('Icon loading warning:', error);
+        setIconsLoaded(true); // Still proceed
+      }
+    };
+
+    loadIcons();
+  }, []);
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -61,15 +137,24 @@ const MainNavigator = () => {
           backgroundColor: '#ffffff',
           borderTopWidth: 1,
           borderTopColor: '#e0e0e0',
-          paddingBottom: 5,
+          paddingBottom: Platform.OS === 'ios' ? 5 : 8,
           paddingTop: 5,
-          height: 60,
+          height: Platform.OS === 'ios' ? 60 : 65,
+          elevation: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
         },
         tabBarActiveTintColor: '#667eea',
         tabBarInactiveTintColor: '#757575',
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '600',
+          marginTop: 2,
+        },
+        tabBarIconStyle: {
+          marginBottom: Platform.OS === 'android' ? 2 : 0,
         },
       }}
     >
@@ -78,8 +163,13 @@ const MainNavigator = () => {
         component={HomeStack}
         options={{
           tabBarLabel: 'Inicio',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="home" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon 
+              iconName="home" 
+              color={color} 
+              size={focused ? size + 2 : size} 
+              fallbackText="⌂"
+            />
           ),
         }}
       />
@@ -88,8 +178,13 @@ const MainNavigator = () => {
         component={GalleryStack}
         options={{
           tabBarLabel: 'Galería',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="photo-library" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon 
+              iconName="photo-library" 
+              color={color} 
+              size={focused ? size + 2 : size} 
+              fallbackText="📷"
+            />
           ),
         }}
       />
@@ -98,8 +193,13 @@ const MainNavigator = () => {
         component={ProfileStack}
         options={{
           tabBarLabel: 'Perfil',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="person" size={size} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon 
+              iconName="person" 
+              color={color} 
+              size={focused ? size + 2 : size} 
+              fallbackText="👤"
+            />
           ),
         }}
       />

@@ -1,0 +1,122 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isValidImageType() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    function isValidVideoType() {
+      return request.resource.contentType.matches('video/.*');
+    }
+    
+    function isValidDocumentType() {
+      return request.resource.contentType.matches('application/pdf') ||
+             request.resource.contentType.matches('application/msword') ||
+             request.resource.contentType.matches('application/vnd.openxmlformats-officedocument.wordprocessingml.document') ||
+             request.resource.contentType.matches('text/plain');
+    }
+    
+    function isValidFileSize(maxSize) {
+      return request.resource.size <= maxSize;
+    }
+    
+    function extractUserIdFromPath(path) {
+      // Extract user ID from path like "users/USER_ID/..." or "photos/USER_ID_..."
+      return path.split('/')[1].split('_')[0];
+    }
+    
+    // User profile pictures
+    match /users/{userId}/{fileName} {
+      allow read: if isAuthenticated();
+      
+      allow write: if isAuthenticated() && 
+        isOwner(userId) &&
+        isValidImageType() &&
+        isValidFileSize(5 * 1024 * 1024); // 5MB limit for profile pictures
+      
+      allow delete: if isAuthenticated() && isOwner(userId);
+    }
+    
+    // Photo uploads
+    match /photos/{fileName} {
+      allow read: if isAuthenticated();
+      
+      allow write: if isAuthenticated() && 
+        isOwner(extractUserIdFromPath(fileName)) &&
+        isValidImageType() &&
+        isValidFileSize(10 * 1024 * 1024); // 10MB limit for photos
+      
+      allow delete: if isAuthenticated() && isOwner(extractUserIdFromPath(fileName));
+    }
+    
+    // Video uploads (for future features)
+    match /videos/{fileName} {
+      allow read: if isAuthenticated();
+      
+      allow write: if isAuthenticated() && 
+        isOwner(extractUserIdFromPath(fileName)) &&
+        isValidVideoType() &&
+        isValidFileSize(50 * 1024 * 1024); // 50MB limit for videos
+      
+      allow delete: if isAuthenticated() && isOwner(extractUserIdFromPath(fileName));
+    }
+    
+    // Widget assets (images, etc.)
+    match /widget_assets/{userId}/{fileName} {
+      allow read: if isAuthenticated();
+      
+      allow write: if isAuthenticated() && 
+        isOwner(userId) &&
+        (isValidImageType() || isValidDocumentType()) &&
+        isValidFileSize(5 * 1024 * 1024); // 5MB limit for widget assets
+      
+      allow delete: if isAuthenticated() && isOwner(userId);
+    }
+    
+    // Chat attachments
+    match /chat_attachments/{chatId}/{fileName} {
+      allow read: if isAuthenticated();
+      
+      allow write: if isAuthenticated() && 
+        (isValidImageType() || isValidDocumentType()) &&
+        isValidFileSize(20 * 1024 * 1024); // 20MB limit for chat attachments
+      
+      allow delete: if isAuthenticated();
+    }
+    
+    // Temporary uploads (for processing)
+    match /temp/{userId}/{fileName} {
+      allow read, write: if isAuthenticated() && 
+        isOwner(userId) &&
+        isValidFileSize(50 * 1024 * 1024); // 50MB limit for temp files
+      
+      allow delete: if isAuthenticated() && isOwner(userId);
+    }
+    
+    // Public assets (read-only for authenticated users)
+    match /public/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Only server can write to public assets
+    }
+    
+    // Backup files (admin only)
+    match /backups/{fileName} {
+      allow read, write: if false; // Only server/admin functions can access
+    }
+    
+    // Default deny all other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

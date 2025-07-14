@@ -74,6 +74,17 @@ const WidgetSettingsScreen = ({ navigation }) => {
         allowComments: true,
       },
     },
+    {
+      type: 'weather',
+      title: 'Clima Actual',
+      icon: '🌤️',
+      description: 'Información meteorológica en tiempo real',
+      gradient: ['#feca57', '#ff9ff3'],
+      defaultSettings: {
+        location: 'auto',
+        units: 'metric',
+      },
+    },
   ];
 
   const handleCreateWidget = async () => {

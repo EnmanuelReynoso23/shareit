@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   Animated,
   Dimensions,
   Platform,
+  Appearance,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 
@@ -20,12 +21,97 @@ const EnhancedCard = ({
   onPress,
   gradient = ['#667eea', '#764ba2'],
   cardType = 'default', // 'default', 'feature', 'stats', 'action'
+  theme = 'light', // 'light', 'dark', 'auto'
   style,
   disabled = false,
   loading = false,
 }) => {
+  const [currentTheme, setCurrentTheme] = useState(theme);
   const scaleValue = new Animated.Value(1);
   const opacityValue = new Animated.Value(1);
+
+  // Auto theme detection
+  useEffect(() => {
+    if (theme === 'auto') {
+      const colorScheme = Appearance.getColorScheme();
+      setCurrentTheme(colorScheme === 'dark' ? 'dark' : 'light');
+
+      const subscription = Appearance.addChangeListener(({ colorScheme }) => {
+        setCurrentTheme(colorScheme === 'dark' ? 'dark' : 'light');
+      });
+
+      return () => subscription?.remove();
+    } else {
+      setCurrentTheme(theme);
+    }
+  }, [theme]);
+
+  // Get theme-specific styles
+  const getThemedStyles = () => {
+    const isDark = currentTheme === 'dark';
+    
+    return {
+      defaultCard: {
+        ...styles.defaultCard,
+        backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+        shadowColor: isDark ? '#000' : '#000',
+        shadowOpacity: isDark ? 0.3 : 0.1,
+      },
+      featureCard: {
+        ...styles.featureCard,
+        backgroundColor: isDark ? '#2a2a2a' : '#ffffff',
+        borderColor: isDark ? 'rgba(102, 126, 234, 0.3)' : 'rgba(102, 126, 234, 0.1)',
+        shadowColor: isDark ? '#667eea' : '#667eea',
+      },
+      statsCard: {
+        ...styles.statsCard,
+        backgroundColor: isDark ? '#2a2a2a' : '#f8fafe',
+        borderColor: isDark ? '#404040' : '#e3e8ff',
+      },
+      iconContainer: {
+        ...styles.iconContainer,
+        backgroundColor: isDark ? '#404040' : '#f0f4ff',
+      },
+      title: {
+        ...styles.title,
+        color: isDark ? '#ffffff' : '#333',
+      },
+      featureTitle: {
+        ...styles.featureTitle,
+        color: isDark ? '#8b9bff' : '#667eea',
+      },
+      statsTitle: {
+        ...styles.statsTitle,
+        color: isDark ? '#cccccc' : '#4a5568',
+      },
+      subtitle: {
+        ...styles.subtitle,
+        color: isDark ? '#cccccc' : '#666',
+      },
+      featureSubtitle: {
+        ...styles.featureSubtitle,
+        color: isDark ? '#a78bfa' : '#7c3aed',
+      },
+      loadingOverlay: {
+        ...styles.loadingOverlay,
+        backgroundColor: isDark ? 'rgba(26, 26, 26, 0.8)' : 'rgba(255, 255, 255, 0.8)',
+      },
+      statValue: {
+        ...styles.statValue,
+        color: isDark ? '#8b9bff' : '#667eea',
+      },
+      statLabel: {
+        ...styles.statLabel,
+        color: isDark ? '#cccccc' : '#666',
+      },
+      featureText: {
+        ...styles.featureText,
+        color: isDark ? '#cccccc' : '#4a5568',
+      },
+    };
+  };
+
+  const themedStyles = getThemedStyles();
 
   const handlePressIn = () => {
     if (disabled || loading) return;
@@ -62,13 +148,13 @@ const EnhancedCard = ({
   const getCardStyle = () => {
     switch (cardType) {
       case 'feature':
-        return styles.featureCard;
+        return themedStyles.featureCard;
       case 'stats':
-        return styles.statsCard;
+        return themedStyles.statsCard;
       case 'action':
         return styles.actionCard;
       default:
-        return styles.defaultCard;
+        return themedStyles.defaultCard;
     }
   };
 
@@ -78,24 +164,24 @@ const EnhancedCard = ({
       {(title || subtitle || icon) && (
         <View style={styles.cardHeader}>
           {icon && (
-            <View style={styles.iconContainer}>
+            <View style={themedStyles.iconContainer}>
               <Text style={styles.icon}>{icon}</Text>
             </View>
           )}
           <View style={styles.textContainer}>
             {title && (
               <Text style={[
-                styles.title,
-                cardType === 'feature' && styles.featureTitle,
-                cardType === 'stats' && styles.statsTitle,
+                themedStyles.title,
+                cardType === 'feature' && themedStyles.featureTitle,
+                cardType === 'stats' && themedStyles.statsTitle,
               ]}>
                 {title}
               </Text>
             )}
             {subtitle && (
               <Text style={[
-                styles.subtitle,
-                cardType === 'feature' && styles.featureSubtitle,
+                themedStyles.subtitle,
+                cardType === 'feature' && themedStyles.featureSubtitle,
               ]}>
                 {subtitle}
               </Text>
@@ -113,7 +199,7 @@ const EnhancedCard = ({
 
       {/* Loading Overlay */}
       {loading && (
-        <View style={styles.loadingOverlay}>
+        <View style={themedStyles.loadingOverlay}>
           <View style={styles.loadingSpinner} />
         </View>
       )}
