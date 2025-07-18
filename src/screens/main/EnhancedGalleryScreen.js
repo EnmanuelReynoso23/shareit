@@ -15,7 +15,7 @@ import {
   Modal,
 } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
-import LinearGradient from 'react-native-linear-gradient';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // Components
 import LoadingScreen from '../../components/LoadingScreen';
