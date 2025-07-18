@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useReducer } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Auth Context
 const AuthContext = createContext();
@@ -12,17 +13,31 @@ const authReducer = (state, action) => {
         ...state,
         user: action.payload,
         isAuthenticated: true,
+        error: null,
       };
     case 'CLEAR_USER':
       return {
         ...state,
         user: null,
         isAuthenticated: false,
+        error: null,
+      };
+    case 'SET_LOADING':
+      return {
+        ...state,
+        loading: action.payload,
       };
     case 'SET_ERROR':
       return {
         ...state,
         error: action.payload,
+        loading: false,
+      };
+    case 'RESTORE_AUTH_STATE':
+      return {
+        ...state,
+        ...action.payload,
+        loading: false,
       };
     default:
       return state;
@@ -61,7 +76,9 @@ const uiReducer = (state, action) => {
 const initialAuthState = {
   user: null,
   isAuthenticated: false,
+  loading: true,
   error: null,
+  initialized: false,
 };
 
 const initialUIState = {
@@ -75,13 +92,72 @@ export const AppProvider = ({ children }) => {
   const [authState, authDispatch] = useReducer(authReducer, initialAuthState);
   const [uiState, uiDispatch] = useReducer(uiReducer, initialUIState);
 
+  // Persist auth state
+  const persistAuthState = async (state) => {
+    try {
+      await AsyncStorage.setItem('authState', JSON.stringify({
+        user: state.user,
+        isAuthenticated: state.isAuthenticated,
+        timestamp: Date.now(),
+      }));
+    } catch (error) {
+      console.warn('Failed to persist auth state:', error);
+    }
+  };
+
+  // Restore auth state
+  const restoreAuthState = async () => {
+    try {
+      const stored = await AsyncStorage.getItem('authState');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        
+        // Check if stored state is not too old (24 hours)
+        const maxAge = 24 * 60 * 60 * 1000;
+        if (Date.now() - parsed.timestamp < maxAge) {
+          authDispatch({
+            type: 'RESTORE_AUTH_STATE',
+            payload: {
+              user: parsed.user,
+              isAuthenticated: parsed.isAuthenticated,
+              initialized: true,
+            },
+          });
+          return;
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to restore auth state:', error);
+    }
+    
+    // If no valid stored state, mark as initialized
+    authDispatch({
+      type: 'RESTORE_AUTH_STATE',
+      payload: { initialized: true },
+    });
+  };
+
+  // Initialize auth state on mount
+  React.useEffect(() => {
+    restoreAuthState();
+  }, []);
   // Auth actions
   const setUser = (user) => {
+    const newState = { user, isAuthenticated: true };
     authDispatch({ type: 'SET_USER', payload: user });
+    persistAuthState(newState);
   };
 
   const clearUser = () => {
+    const newState = { user: null, isAuthenticated: false };
     authDispatch({ type: 'CLEAR_USER' });
+    persistAuthState(newState);
+    // Clear stored auth state
+    AsyncStorage.removeItem('authState').catch(console.warn);
+  };
+
+  const setAuthLoading = (loading) => {
+    authDispatch({ type: 'SET_LOADING', payload: loading });
   };
 
   const setError = (error) => {
@@ -118,6 +194,7 @@ export const AppProvider = ({ children }) => {
         ...authState,
         setUser,
         clearUser,
+        setAuthLoading,
         setError,
       }}
     >

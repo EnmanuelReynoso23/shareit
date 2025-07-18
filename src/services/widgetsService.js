@@ -19,6 +19,7 @@ import {
 import { db } from '../../config/firebase';
 import widgetPermissions from './widgetPermissions';
 import widgetCollaboration from './widgetCollaboration';
+import validation from '../utils/validation';
 
 class WidgetsService {
   constructor() {
@@ -26,10 +27,53 @@ class WidgetsService {
     // Registro de listeners activos para prevenir memory leaks
     this.activeListeners = new Map();
     this.listenerCounter = 0;
+    this.cleanupInterval = null;
+    this.isDestroyed = false;
+    
+    // Setup automatic cleanup
+    this.setupAutomaticCleanup();
+  }
+
+  // Setup automatic cleanup to prevent memory leaks
+  setupAutomaticCleanup() {
+    this.cleanupInterval = setInterval(() => {
+      if (!this.isDestroyed) {
+        this.cleanupStaleListeners();
+        this.performMemoryOptimization();
+      }
+    }, 10 * 60 * 1000); // Every 10 minutes
+  }
+
+  // Perform memory optimization
+  performMemoryOptimization() {
+    const now = Date.now();
+    const staleThreshold = 30 * 60 * 1000; // 30 minutes
+    let cleanedCount = 0;
+
+    for (const [listenerId, listener] of this.activeListeners.entries()) {
+      if (now - listener.timestamp > staleThreshold) {
+        this.unregisterListener(listenerId);
+        cleanedCount++;
+      }
+    }
+
+    if (cleanedCount > 0) {
+      console.log(`🧹 Cleaned up ${cleanedCount} stale listeners`);
+    }
+
+    // Log memory usage if too many listeners
+    if (this.activeListeners.size > 50) {
+      console.warn(`⚠️ High number of active listeners: ${this.activeListeners.size}`);
+    }
   }
 
   // Registrar listener para tracking y limpieza
   registerListener(listenerId, unsubscribeFunction) {
+    if (this.isDestroyed) {
+      console.warn('⚠️ Cannot register listener, service is destroyed');
+      return;
+    }
+
     this.activeListeners.set(listenerId, {
       unsubscribe: unsubscribeFunction,
       timestamp: Date.now()
@@ -53,6 +97,19 @@ class WidgetsService {
 
   // Limpiar todos los listeners
   cleanupAllListeners() {
+    if (this.isDestroyed) {
+      return;
+    }
+
+    console.log('🧹 Cleaning up all widget listeners...');
+    this.isDestroyed = true;
+
+    // Clear cleanup interval
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+
     for (const [listenerId, listener] of this.activeListeners.entries()) {
       try {
         if (typeof listener.unsubscribe === 'function') {
@@ -63,6 +120,7 @@ class WidgetsService {
       }
     }
     this.activeListeners.clear();
+    console.log('✅ All widget listeners cleaned up');
   }
 
   // Limpiar listeners antiguos (más de 30 minutos)
@@ -95,8 +153,21 @@ class WidgetsService {
   // Create new widget with permissions
   async createWidget(widgetData) {
     try {
-      const widget = {
+      // Validate widget data
+      const widgetValidation = validation.validateWidgetConfig(widgetData);
+      if (!widgetValidation.isValid) {
+        throw new Error(widgetValidation.error);
+      }
+
+      // Sanitize widget data
+      const sanitizedData = {
         ...widgetData,
+        title: validation.sanitizeText(widgetData.title, 100),
+        description: widgetData.description ? validation.sanitizeText(widgetData.description, 500) : '',
+      };
+
+      const widget = {
+        ...sanitizedData,
         id: null, // Will be set by Firestore
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -105,8 +176,8 @@ class WidgetsService {
         sharedWith: [],
         collaborators: [],
         settings: {
-          ...this.getDefaultSettings(widgetData.type),
-          ...widgetData.settings
+          ...this.getDefaultSettings(sanitizedData.type),
+          ...sanitizedData.settings
         },
         version: 1,
         lastSyncTimestamp: serverTimestamp()
@@ -116,7 +187,7 @@ class WidgetsService {
       const widgetId = docRef.id;
 
       // Create permissions for the widget
-      await widgetPermissions.createWidgetPermissions(widgetId, widgetData.userId);
+      await widgetPermissions.createWidgetPermissions(widgetId, sanitizedData.userId);
 
       return {
         id: widgetId,
@@ -438,6 +509,11 @@ class WidgetsService {
 
   // Real-time listener for collaborative widgets
   subscribeToCollaborativeWidget(widgetId, userId, callback) {
+    if (this.isDestroyed) {
+      console.warn('⚠️ Cannot subscribe, service is destroyed');
+      return () => {};
+    }
+
     const listenerId = this.generateListenerId();
     const unsubscribers = [];
 
@@ -446,6 +522,8 @@ class WidgetsService {
       const widgetUnsubscribe = onSnapshot(
         doc(db, this.collection, widgetId),
         (doc) => {
+          if (this.isDestroyed) return;
+
           if (doc.exists()) {
             callback({
               type: 'widget_update',
@@ -458,16 +536,20 @@ class WidgetsService {
         },
         (error) => {
           console.error('Widget listener error:', error);
-          callback({
-            type: 'error',
-            data: { error: error.message }
-          });
+          if (!this.isDestroyed) {
+            callback({
+              type: 'error',
+              data: { error: error.message }
+            });
+          }
         }
       );
       unsubscribers.push(widgetUnsubscribe);
 
       // Subscribe to collaboration changes
       const changesUnsubscribe = widgetCollaboration.subscribeToWidgetChanges(widgetId, (changes) => {
+        if (this.isDestroyed) return;
+
         callback({
           type: 'collaboration_changes',
           data: changes

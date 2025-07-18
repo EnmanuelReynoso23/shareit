@@ -14,6 +14,7 @@ import {
 } from 'firebase/auth';
 import { auth } from '../../config/firebase';
 import userService from './userService';
+import validation from '../utils/validation';
 
 class AuthService {
   constructor() {
@@ -208,12 +209,28 @@ class AuthService {
   // Register new user
   async register(email, password, userData = {}) {
     try {
-      // Validate input
-      this.validateEmail(email);
-      this.validatePassword(password);
+      // Enhanced input validation
+      const emailValidation = validation.validateEmail(email);
+      if (!emailValidation.isValid) {
+        throw new Error(emailValidation.error);
+      }
+
+      const passwordValidation = validation.validatePassword(password);
+      if (!passwordValidation.isValid) {
+        throw new Error(passwordValidation.error);
+      }
+
+      // Validate display name if provided
+      if (userData.displayName) {
+        const nameValidation = validation.validateDisplayName(userData.displayName);
+        if (!nameValidation.isValid) {
+          throw new Error(nameValidation.error);
+        }
+        userData.displayName = nameValidation.value;
+      }
 
       // Create user with Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, emailValidation.value, password);
       const user = userCredential.user;
 
       // Update profile with display name if provided
@@ -255,13 +272,17 @@ class AuthService {
   // Login user
   async login(email, password) {
     try {
-      this.validateEmail(email);
+      // Enhanced input validation
+      const emailValidation = validation.validateEmail(email);
+      if (!emailValidation.isValid) {
+        throw new Error(emailValidation.error);
+      }
       
       if (!password) {
         throw new Error('Password is required');
       }
 
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, emailValidation.value, password);
       const user = userCredential.user;
 
       // Initialize token refresh monitoring
@@ -323,9 +344,12 @@ class AuthService {
   // Send password reset email
   async resetPassword(email) {
     try {
-      this.validateEmail(email);
+      const emailValidation = validation.validateEmail(email);
+      if (!emailValidation.isValid) {
+        throw new Error(emailValidation.error);
+      }
       
-      await sendPasswordResetEmail(auth, email);
+      await sendPasswordResetEmail(auth, emailValidation.value);
       
       return {
         success: true,
@@ -345,7 +369,10 @@ class AuthService {
         throw new Error('No authenticated user');
       }
 
-      this.validatePassword(newPassword);
+      const passwordValidation = validation.validatePassword(newPassword);
+      if (!passwordValidation.isValid) {
+        throw new Error(passwordValidation.error);
+      }
 
       // Reauthenticate user
       const credential = EmailAuthProvider.credential(user.email, currentPassword);
@@ -372,20 +399,23 @@ class AuthService {
         throw new Error('No authenticated user');
       }
 
-      this.validateEmail(newEmail);
+      const emailValidation = validation.validateEmail(newEmail);
+      if (!emailValidation.isValid) {
+        throw new Error(emailValidation.error);
+      }
 
       // Reauthenticate user
       const credential = EmailAuthProvider.credential(user.email, currentPassword);
       await reauthenticateWithCredential(user, credential);
 
       // Update email
-      await updateEmail(user, newEmail);
+      await updateEmail(user, emailValidation.value);
 
       // Send verification email
       await sendEmailVerification(user);
 
       // Update email in Firestore
-      await userService.updateUserProfile(user.uid, { email: newEmail });
+      await userService.updateUserProfile(user.uid, { email: emailValidation.value });
 
       return {
         success: true,
@@ -405,13 +435,29 @@ class AuthService {
         throw new Error('No authenticated user');
       }
 
+      // Validate updates
+      const validatedUpdates = { ...updates };
+      
+      if (updates.displayName) {
+        const nameValidation = validation.validateDisplayName(updates.displayName);
+        if (!nameValidation.isValid) {
+          throw new Error(nameValidation.error);
+        }
+        validatedUpdates.displayName = nameValidation.value;
+      }
+
+      // Sanitize other text fields
+      if (updates.bio) {
+        validatedUpdates.bio = validation.sanitizeText(updates.bio, 500);
+      }
+
       // Update Firebase Auth profile
       const authUpdates = {};
-      if (updates.displayName !== undefined) {
-        authUpdates.displayName = updates.displayName;
+      if (validatedUpdates.displayName !== undefined) {
+        authUpdates.displayName = validatedUpdates.displayName;
       }
-      if (updates.photoURL !== undefined) {
-        authUpdates.photoURL = updates.photoURL;
+      if (validatedUpdates.photoURL !== undefined) {
+        authUpdates.photoURL = validatedUpdates.photoURL;
       }
 
       if (Object.keys(authUpdates).length > 0) {
@@ -419,7 +465,7 @@ class AuthService {
       }
 
       // Update Firestore profile
-      const updatedProfile = await userService.updateUserProfile(user.uid, updates);
+      const updatedProfile = await userService.updateUserProfile(user.uid, validatedUpdates);
 
       return {
         success: true,
@@ -541,41 +587,6 @@ class AuthService {
     });
   }
 
-  // Validate email format
-  validateEmail(email) {
-    if (!email) {
-      throw new Error('Email is required');
-    }
-    
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      throw new Error('Please enter a valid email address');
-    }
-    
-    return true;
-  }
-
-  // Validate password strength
-  validatePassword(password) {
-    if (!password) {
-      throw new Error('Password is required');
-    }
-    
-    if (password.length < 6) {
-      throw new Error('Password must be at least 6 characters long');
-    }
-    
-    // Check for at least one letter and one number
-    const hasLetter = /[a-zA-Z]/.test(password);
-    const hasNumber = /\d/.test(password);
-    
-    if (!hasLetter || !hasNumber) {
-      throw new Error('Password must contain at least one letter and one number');
-    }
-    
-    return true;
-  }
-
   // Get user-friendly auth error messages
   getAuthErrorMessage(errorCode) {
     const errorMessages = {
@@ -597,31 +608,7 @@ class AuthService {
 
   // Check password strength
   checkPasswordStrength(password) {
-    let strength = 0;
-    let feedback = [];
-
-    if (password.length >= 8) strength += 1;
-    else feedback.push('Use at least 8 characters');
-
-    if (/[a-z]/.test(password)) strength += 1;
-    else feedback.push('Include lowercase letters');
-
-    if (/[A-Z]/.test(password)) strength += 1;
-    else feedback.push('Include uppercase letters');
-
-    if (/\d/.test(password)) strength += 1;
-    else feedback.push('Include numbers');
-
-    if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) strength += 1;
-    else feedback.push('Include special characters');
-
-    const levels = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong'];
-    
-    return {
-      score: strength,
-      level: levels[strength] || 'Very Weak',
-      feedback: feedback
-    };
+    return validation.calculatePasswordStrength(password);
   }
 }
 

@@ -19,9 +19,44 @@ class RealtimeManager {
     this.reconnectTimer = null;
     this.currentUserId = null;
     this.connectionListeners = new Set();
+    this.cleanupTimer = null;
+    this.isDestroyed = false;
     
     // Listen to online/offline events
     this.setupNetworkListeners();
+    
+    // Setup periodic cleanup
+    this.setupPeriodicCleanup();
+  }
+
+  // Setup periodic cleanup to prevent memory leaks
+  setupPeriodicCleanup() {
+    this.cleanupTimer = setInterval(() => {
+      if (!this.isDestroyed) {
+        this.cleanupStaleListeners();
+        this.performMemoryCleanup();
+      }
+    }, 5 * 60 * 1000); // Every 5 minutes
+  }
+
+  // Perform memory cleanup
+  performMemoryCleanup() {
+    // Clear old connection listeners
+    if (this.connectionListeners.size > 10) {
+      console.warn('⚠️ Too many connection listeners, clearing old ones');
+      const listenersArray = Array.from(this.connectionListeners);
+      this.connectionListeners.clear();
+      // Keep only the last 5 listeners
+      listenersArray.slice(-5).forEach(listener => {
+        this.connectionListeners.add(listener);
+      });
+    }
+
+    // Clear old timers
+    if (this.reconnectTimer && this.reconnectAttempts === 0) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
   }
 
   // Setup network connectivity listeners
@@ -125,11 +160,32 @@ class RealtimeManager {
 
   // Enhanced listener setup with error handling
   setupListenerWithRetry(key, setupFunction, maxRetries = 3) {
+    if (this.isDestroyed) {
+      console.warn('⚠️ Cannot setup listener, RealtimeManager is destroyed');
+      return false;
+    }
+
     let retries = 0;
     
     const attemptSetup = () => {
+      if (this.isDestroyed) {
+        return false;
+      }
+
       try {
         const unsubscribe = setupFunction();
+        
+        // Wrap unsubscribe to handle cleanup properly
+        const wrappedUnsubscribe = () => {
+          try {
+            if (typeof unsubscribe === 'function') {
+              unsubscribe();
+            }
+          } catch (error) {
+            console.warn(`Error unsubscribing ${key}:`, error);
+          }
+        };
+        
         this.listeners.set(key, unsubscribe);
         console.log(`📡 Successfully setup listener: ${key}`);
         return true;
@@ -137,7 +193,7 @@ class RealtimeManager {
         console.error(`❌ Error setting up listener ${key}:`, error);
         retries++;
         
-        if (retries < maxRetries) {
+        if (retries < maxRetries && !this.isDestroyed) {
           console.log(`🔄 Retrying listener setup ${key} (${retries}/${maxRetries})`);
           setTimeout(attemptSetup, 1000 * retries); // Exponential backoff
         } else {
@@ -365,7 +421,25 @@ class RealtimeManager {
 
   // Clean up all listeners
   cleanup() {
+    if (this.isDestroyed) {
+      console.warn('⚠️ RealtimeManager already destroyed');
+      return;
+    }
+
     console.log('🧹 Cleaning up all realtime listeners...');
+    this.isDestroyed = true;
+    
+    // Clear periodic cleanup timer
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = null;
+    }
+    
+    // Clear reconnection timer
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     
     this.listeners.forEach((unsubscribe, key) => {
       if (typeof unsubscribe === 'function') {
@@ -379,7 +453,9 @@ class RealtimeManager {
     });
     
     this.listeners.clear();
+    this.connectionListeners.clear();
     this.isInitialized = false;
+    this.currentUserId = null;
     
     console.log('✅ All realtime listeners cleaned up');
   }

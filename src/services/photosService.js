@@ -20,16 +20,35 @@ import {
   deleteObject 
 } from 'firebase/storage';
 import { db, storage } from '../../config/firebase';
+import validation from '../utils/validation';
 
 class PhotosService {
   constructor() {
     this.collection = 'photos';
     this.storageRef = 'photos';
+    this.rateLimiter = validation.createRateLimiter(10, 60000); // 10 uploads per minute
   }
 
   // Upload photo to Firebase Storage
   async uploadPhoto(file, userId, metadata = {}) {
     try {
+      // Rate limiting
+      const rateLimitCheck = this.rateLimiter(userId);
+      if (!rateLimitCheck.allowed) {
+        throw new Error(rateLimitCheck.error);
+      }
+
+      // Enhanced file validation
+      const fileValidation = validation.validateFile(file, {
+        maxSize: 10 * 1024 * 1024, // 10MB
+        allowedTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+        minSize: 100
+      });
+      
+      if (!fileValidation.isValid) {
+        throw new Error(fileValidation.error);
+      }
+
       // Validar tamaño del archivo (10MB máximo)
       const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
       if (file.size > MAX_FILE_SIZE) {
@@ -42,8 +61,22 @@ class PhotosService {
         throw new Error(`Invalid file type. Allowed types: ${allowedTypes.join(', ')}`);
       }
 
+      // Sanitize metadata
+      const sanitizedMetadata = {};
+      if (metadata.caption) {
+        sanitizedMetadata.caption = validation.sanitizeText(metadata.caption, 500);
+      }
+      if (metadata.tags && Array.isArray(metadata.tags)) {
+        sanitizedMetadata.tags = metadata.tags
+          .map(tag => validation.sanitizeText(tag, 50))
+          .filter(tag => tag.length > 0)
+          .slice(0, 10); // Max 10 tags
+      }
+
       const timestamp = Date.now();
-      const fileName = `${userId}_${timestamp}_${file.name || 'photo.jpg'}`;
+      // Sanitize filename to prevent path traversal
+      const safeName = (file.name || 'photo.jpg').replace(/[^a-zA-Z0-9.-]/g, '_');
+      const fileName = `${userId}_${timestamp}_${safeName}`;
       const storageRef = ref(storage, `${this.storageRef}/${fileName}`);
       
       // Upload file con retry logic
@@ -57,7 +90,7 @@ class PhotosService {
               userId,
               uploadedAt: timestamp.toString(),
               originalSize: file.size.toString(),
-              ...metadata
+              ...sanitizedMetadata
             }
           });
           
@@ -109,15 +142,24 @@ class PhotosService {
   // Create photo document in Firestore
   async createPhoto(photoData) {
     try {
-      const photoDoc = {
+      // Validate and sanitize photo data
+      const sanitizedData = {
         ...photoData,
+        caption: photoData.caption ? validation.sanitizeText(photoData.caption, 500) : '',
+        tags: Array.isArray(photoData.tags) 
+          ? photoData.tags.map(tag => validation.sanitizeText(tag, 50)).filter(tag => tag.length > 0).slice(0, 10)
+          : [],
+      };
+
+      const photoDoc = {
+        ...sanitizedData,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         likes: 0,
         comments: [],
         shared: false,
         sharedWith: [],
-        tags: photoData.tags || [],
+        tags: sanitizedData.tags,
         location: photoData.location || null,
         metadata: {
           width: photoData.width || null,
@@ -216,9 +258,23 @@ class PhotosService {
   // Update photo
   async updatePhoto(photoId, updates) {
     try {
+      // Validate and sanitize updates
+      const sanitizedUpdates = { ...updates };
+      
+      if (updates.caption) {
+        sanitizedUpdates.caption = validation.sanitizeText(updates.caption, 500);
+      }
+      
+      if (updates.tags && Array.isArray(updates.tags)) {
+        sanitizedUpdates.tags = updates.tags
+          .map(tag => validation.sanitizeText(tag, 50))
+          .filter(tag => tag.length > 0)
+          .slice(0, 10);
+      }
+
       const docRef = doc(db, this.collection, photoId);
       const updateData = {
-        ...updates,
+        ...sanitizedUpdates,
         updatedAt: serverTimestamp()
       };
 

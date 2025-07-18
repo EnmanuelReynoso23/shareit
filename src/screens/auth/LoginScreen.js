@@ -16,17 +16,34 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../../config/firebase';
 import { useAuth } from '../../store/AppContext';
+import validation from '../../utils/validation';
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
   const { setUser, setError } = useAuth();
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
+    // Clear previous errors
+    setErrors({});
+
+    // Validate inputs
+    const emailValidation = validation.validateEmail(email);
+    const newErrors = {};
+
+    if (!emailValidation.isValid) {
+      newErrors.email = emailValidation.error;
+    }
+
+    if (!password) {
+      newErrors.password = 'La contraseña es requerida';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
@@ -34,7 +51,7 @@ const LoginScreen = ({ navigation }) => {
     setError(null);
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, emailValidation.value, password);
       const user = userCredential.user;
       
       setUser({
@@ -60,6 +77,12 @@ const LoginScreen = ({ navigation }) => {
           break;
         case 'auth/too-many-requests':
           errorMessage = 'Demasiados intentos. Intenta más tarde';
+          break;
+        case 'auth/network-request-failed':
+          errorMessage = 'Error de conexión. Verifica tu internet';
+          break;
+        case 'auth/user-disabled':
+          errorMessage = 'Esta cuenta ha sido deshabilitada';
           break;
         default:
           errorMessage = error.message;
@@ -107,7 +130,7 @@ const LoginScreen = ({ navigation }) => {
               <View style={styles.inputContainer}>
                 <MaterialIcons name="email" size={20} color="#667eea" style={styles.inputIcon} />
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, errors.email && styles.inputError]}
                   placeholder="Correo electrónico"
                   placeholderTextColor="#999"
                   value={email}
@@ -117,12 +140,15 @@ const LoginScreen = ({ navigation }) => {
                   autoComplete="email"
                 />
               </View>
+              {errors.email && (
+                <Text style={styles.errorText}>{errors.email}</Text>
+              )}
 
               {/* Password Input */}
               <View style={styles.inputContainer}>
                 <MaterialIcons name="lock" size={20} color="#667eea" style={styles.inputIcon} />
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, errors.password && styles.inputError]}
                   placeholder="Contraseña"
                   placeholderTextColor="#999"
                   value={password}
@@ -141,6 +167,9 @@ const LoginScreen = ({ navigation }) => {
                   />
                 </TouchableOpacity>
               </View>
+              {errors.password && (
+                <Text style={styles.errorText}>{errors.password}</Text>
+              )}
 
               {/* Forgot Password */}
               <TouchableOpacity style={styles.forgotPassword}>
@@ -249,6 +278,16 @@ const styles = StyleSheet.create({
   },
   eyeButton: {
     padding: 5,
+  },
+  inputError: {
+    borderColor: '#ff6b6b',
+    borderWidth: 1,
+  },
+  errorText: {
+    color: '#ff6b6b',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
   },
   forgotPassword: {
     alignItems: 'flex-end',

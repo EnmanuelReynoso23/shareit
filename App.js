@@ -19,17 +19,22 @@ import MainNavigator from './src/navigation/MainNavigator';
 // Components
 import LoadingScreen from './src/components/LoadingScreen';
 import NotificationSystem from './src/components/NotificationSystem';
+import ErrorBoundary from './src/components/ErrorBoundary';
 
 const Stack = createStackNavigator();
 
 function AppContent() {
   const [initializing, setInitializing] = useState(true);
-  const { user, isAuthenticated, setUser, clearUser } = useAuth();
+  const { user, isAuthenticated, loading, initialized, setUser, clearUser, setAuthLoading } = useAuth();
   const { setNetworkStatus, showNotification } = useUI();
 
   useEffect(() => {
+    let mounted = true;
+
     // Firebase Auth State Listener
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (!mounted) return;
+
       if (firebaseUser) {
         setUser({
           uid: firebaseUser.uid,
@@ -41,11 +46,16 @@ function AppContent() {
         clearUser();
       }
       
-      if (initializing) setInitializing(false);
+      if (initializing) {
+        setInitializing(false);
+        setAuthLoading(false);
+      }
     });
 
     // Network Status Listener
     const networkUnsubscribe = NetInfo.addEventListener(state => {
+      if (!mounted) return;
+
       const status = state.isConnected ? 'online' : 'offline';
       setNetworkStatus(status);
       
@@ -61,13 +71,14 @@ function AppContent() {
 
     // Cleanup
     return () => {
+      mounted = false;
       unsubscribe();
       networkUnsubscribe();
     };
   }, [initializing, setUser, clearUser, setNetworkStatus, showNotification]);
 
   // Show loading screen while checking auth state
-  if (initializing) {
+  if (initializing || loading || !initialized) {
     return (
       <LoadingScreen 
         message="Iniciando ShareIt..."
@@ -78,49 +89,53 @@ function AppContent() {
   }
 
   return (
-    <View style={styles.container}>
-      <StatusBar 
-        barStyle="light-content" 
-        backgroundColor="#667eea" 
-        translucent={false}
-      />
-      <NavigationContainer>
-        <Stack.Navigator
-          screenOptions={{
-            headerShown: false,
-            cardStyle: { backgroundColor: '#f8fafe' },
-          }}
-        >
-          {isAuthenticated ? (
-            <Stack.Screen 
-              name="Main" 
-              component={MainNavigator}
-              options={{
-                animationTypeForReplace: !user ? 'pop' : 'push',
-              }}
-            />
-          ) : (
-            <Stack.Screen 
-              name="Auth" 
-              component={AuthNavigator} 
-            />
-          )}
-        </Stack.Navigator>
-      </NavigationContainer>
-      <NotificationSystem />
-    </View>
+    <ErrorBoundary>
+      <View style={styles.container}>
+        <StatusBar 
+          barStyle="light-content" 
+          backgroundColor="#667eea" 
+          translucent={false}
+        />
+        <NavigationContainer>
+          <Stack.Navigator
+            screenOptions={{
+              headerShown: false,
+              cardStyle: { backgroundColor: '#f8fafe' },
+            }}
+          >
+            {isAuthenticated ? (
+              <Stack.Screen 
+                name="Main" 
+                component={MainNavigator}
+                options={{
+                  animationTypeForReplace: !user ? 'pop' : 'push',
+                }}
+              />
+            ) : (
+              <Stack.Screen 
+                name="Auth" 
+                component={AuthNavigator} 
+              />
+            )}
+          </Stack.Navigator>
+        </NavigationContainer>
+        <NotificationSystem />
+      </View>
+    </ErrorBoundary>
   );
 }
 
 export default function App() {
   return (
-    <Provider store={store}>
-      <AppProvider>
-        <SafeAreaProvider>
-          <AppContent />
-        </SafeAreaProvider>
-      </AppProvider>
-    </Provider>
+    <ErrorBoundary>
+      <Provider store={store}>
+        <AppProvider>
+          <SafeAreaProvider>
+            <AppContent />
+          </SafeAreaProvider>
+        </AppProvider>
+      </Provider>
+    </ErrorBoundary>
   );
 }
 
