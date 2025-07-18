@@ -164,6 +164,7 @@ const MainNavigator = () => {
   return (
     <Tab.Navigator
       tabBar={(props) => <CustomTabBar {...props} />}
+      }
       screenOptions={{
         headerShown: false,
       }}
