@@ -386,6 +386,8 @@ shareit/
 
 - [ ] Widget templates
 
+- [ ] Oskerrss
+
 ## 🤝 Contributing
 
 1. Fork the repository
