@@ -1,92 +1,155 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import authService from '../../services/authService';
+import { User, AuthState } from '../../types';
+
+// Types for async thunk arguments
+interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+interface RegisterData {
+  email: string;
+  password: string;
+  userData: {
+    displayName?: string;
+    firstName?: string;
+    lastName?: string;
+  };
+}
+
+interface PasswordChangeData {
+  currentPassword: string;
+  newPassword: string;
+}
+
+interface ProfileUpdateData {
+  displayName?: string;
+  photoURL?: string;
+  firstName?: string;
+  lastName?: string;
+}
 
 // Async thunks for auth operations
-export const loginUser = createAsyncThunk(
+export const loginUser = createAsyncThunk<
+  User,
+  LoginCredentials,
+  { rejectValue: string }
+>(
   'auth/loginUser',
   async ({ email, password }, { rejectWithValue }) => {
     try {
       const result = await authService.login(email, password);
-      return result;
-    } catch (error) {
-      return rejectWithValue(error.message);
+      return result.user || result;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Login failed');
     }
   }
 );
 
-export const registerUser = createAsyncThunk(
+export const registerUser = createAsyncThunk<
+  User,
+  RegisterData,
+  { rejectValue: string }
+>(
   'auth/registerUser',
   async ({ email, password, userData }, { rejectWithValue }) => {
     try {
       const result = await authService.register(email, password, userData);
-      return result;
-    } catch (error) {
-      return rejectWithValue(error.message);
+      return result.user || result;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Registration failed');
     }
   }
 );
 
-export const logoutUser = createAsyncThunk(
+export const logoutUser = createAsyncThunk<
+  void,
+  void,
+  { rejectValue: string }
+>(
   'auth/logoutUser',
   async (_, { rejectWithValue }) => {
     try {
-      const result = await authService.logout();
-      return result;
-    } catch (error) {
-      return rejectWithValue(error.message);
+      await authService.logout();
+      return;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Logout failed');
     }
   }
 );
 
-export const resetPassword = createAsyncThunk(
+export const resetPassword = createAsyncThunk<
+  void,
+  string,
+  { rejectValue: string }
+>(
   'auth/resetPassword',
   async (email, { rejectWithValue }) => {
     try {
-      const result = await authService.resetPassword(email);
-      return result;
-    } catch (error) {
-      return rejectWithValue(error.message);
+      await authService.resetPassword(email);
+      return;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Password reset failed');
     }
   }
 );
 
-export const changePassword = createAsyncThunk(
+export const changePassword = createAsyncThunk<
+  void,
+  PasswordChangeData,
+  { rejectValue: string }
+>(
   'auth/changePassword',
   async ({ currentPassword, newPassword }, { rejectWithValue }) => {
     try {
-      const result = await authService.changePassword(currentPassword, newPassword);
-      return result;
-    } catch (error) {
-      return rejectWithValue(error.message);
+      await authService.changePassword(currentPassword, newPassword);
+      return;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Password change failed');
     }
   }
 );
 
-export const updateUserProfile = createAsyncThunk(
+export const updateUserProfile = createAsyncThunk<
+  User,
+  ProfileUpdateData,
+  { rejectValue: string }
+>(
   'auth/updateUserProfile',
   async (updates, { rejectWithValue }) => {
     try {
       const result = await authService.updateProfile(updates);
-      return result;
-    } catch (error) {
-      return rejectWithValue(error.message);
+      return result.profile || result;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Profile update failed');
     }
   }
 );
 
-export const resendEmailVerification = createAsyncThunk(
+export const resendEmailVerification = createAsyncThunk<
+  void,
+  void,
+  { rejectValue: string }
+>(
   'auth/resendEmailVerification',
   async (_, { rejectWithValue }) => {
     try {
-      const result = await authService.resendEmailVerification();
-      return result;
-    } catch (error) {
-      return rejectWithValue(error.message);
+      await authService.resendEmailVerification();
+      return;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Email verification failed');
     }
   }
 );
 
-const initialState = {
+const initialState: AuthState & {
+  profile: User | null;
+  message: string | null;
+  emailVerificationSent: boolean;
+  passwordResetSent: boolean;
+  authStateChecked: boolean;
+} = {
   user: null,
   profile: null,
   isAuthenticated: false,
@@ -102,7 +165,11 @@ const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    setAuthState: (state, action) => {
+    setAuthState: (state, action: PayloadAction<{
+      user: User | null;
+      profile: User | null;
+      isAuthenticated: boolean;
+    }>) => {
       const { user, profile, isAuthenticated } = action.payload;
       state.user = user;
       state.profile = profile;
@@ -120,32 +187,20 @@ const authSlice = createSlice({
       state.message = null;
       state.emailVerificationSent = false;
       state.passwordResetSent = false;
-      state.authStateChecked = true;
     },
-    setLoading: (state, action) => {
+    setLoading: (state, action: PayloadAction<boolean>) => {
       state.loading = action.payload;
-    },
-    setError: (state, action) => {
-      state.error = action.payload;
-      state.loading = false;
     },
     clearError: (state) => {
       state.error = null;
     },
-    setMessage: (state, action) => {
-      state.message = action.payload;
-    },
     clearMessage: (state) => {
       state.message = null;
     },
-    updateProfile: (state, action) => {
-      // With immer, we can mutate the state directly
-      if (state.profile) {
-        Object.assign(state.profile, action.payload);
-      }
-      if (state.user) {
-        Object.assign(state.user, action.payload);
-      }
+    setUser: (state, action: PayloadAction<User | null>) => {
+      state.user = action.payload;
+      state.profile = action.payload;
+      state.isAuthenticated = !!action.payload;
     }
   },
   extraReducers: (builder) => {
@@ -158,15 +213,15 @@ const authSlice = createSlice({
       })
       .addCase(loginUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.user = action.payload.user;
-        state.profile = action.payload.profile;
+        state.user = action.payload;
+        state.profile = action.payload;
         state.isAuthenticated = true;
-        state.message = action.payload.message;
         state.error = null;
+        state.message = 'Login successful';
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
+        state.error = (action.payload as string) || 'Login failed';
         state.isAuthenticated = false;
         state.user = null;
         state.profile = null;
@@ -178,21 +233,21 @@ const authSlice = createSlice({
         state.loading = true;
         state.error = null;
         state.message = null;
-        state.emailVerificationSent = false;
       })
       .addCase(registerUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.user = action.payload.user;
-        state.profile = action.payload.profile;
+        state.user = action.payload;
+        state.profile = action.payload;
         state.isAuthenticated = true;
-        state.message = action.payload.message;
-        state.emailVerificationSent = true;
         state.error = null;
+        state.message = 'Registration successful';
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
-        state.emailVerificationSent = false;
+        state.error = (action.payload as string) || 'Registration failed';
+        state.isAuthenticated = false;
+        state.user = null;
+        state.profile = null;
       });
 
     // Logout user
@@ -206,14 +261,14 @@ const authSlice = createSlice({
         state.user = null;
         state.profile = null;
         state.isAuthenticated = false;
-        state.message = 'Logged out successfully';
         state.error = null;
+        state.message = 'Logout successful';
         state.emailVerificationSent = false;
         state.passwordResetSent = false;
       })
       .addCase(logoutUser.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
+        state.error = (action.payload as string) || 'Logout failed';
       });
 
     // Reset password
@@ -223,15 +278,15 @@ const authSlice = createSlice({
         state.error = null;
         state.passwordResetSent = false;
       })
-      .addCase(resetPassword.fulfilled, (state, action) => {
+      .addCase(resetPassword.fulfilled, (state) => {
         state.loading = false;
-        state.message = action.payload.message;
         state.passwordResetSent = true;
         state.error = null;
+        state.message = 'Password reset email sent';
       })
       .addCase(resetPassword.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
+        state.error = (action.payload as string) || 'Password reset failed';
         state.passwordResetSent = false;
       });
 
@@ -241,17 +296,17 @@ const authSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(changePassword.fulfilled, (state, action) => {
+      .addCase(changePassword.fulfilled, (state) => {
         state.loading = false;
-        state.message = action.payload.message;
         state.error = null;
+        state.message = 'Password changed successfully';
       })
       .addCase(changePassword.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
+        state.error = (action.payload as string) || 'Password change failed';
       });
 
-    // Update user profile
+    // Update profile
     builder
       .addCase(updateUserProfile.pending, (state) => {
         state.loading = true;
@@ -259,13 +314,14 @@ const authSlice = createSlice({
       })
       .addCase(updateUserProfile.fulfilled, (state, action) => {
         state.loading = false;
-        state.profile = action.payload.profile;
-        state.message = action.payload.message;
+        state.user = action.payload;
+        state.profile = action.payload;
         state.error = null;
+        state.message = 'Profile updated successfully';
       })
       .addCase(updateUserProfile.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
+        state.error = (action.payload as string) || 'Profile update failed';
       });
 
     // Resend email verification
@@ -273,16 +329,18 @@ const authSlice = createSlice({
       .addCase(resendEmailVerification.pending, (state) => {
         state.loading = true;
         state.error = null;
+        state.emailVerificationSent = false;
       })
-      .addCase(resendEmailVerification.fulfilled, (state, action) => {
+      .addCase(resendEmailVerification.fulfilled, (state) => {
         state.loading = false;
-        state.message = action.payload.message;
         state.emailVerificationSent = true;
         state.error = null;
+        state.message = 'Verification email sent';
       })
       .addCase(resendEmailVerification.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
+        state.error = (action.payload as string) || 'Email verification failed';
+        state.emailVerificationSent = false;
       });
   }
 });
@@ -291,23 +349,9 @@ export const {
   setAuthState,
   clearAuthState,
   setLoading,
-  setError,
   clearError,
-  setMessage,
   clearMessage,
-  updateProfile
+  setUser
 } = authSlice.actions;
-
-// Selectors
-export const selectAuth = (state) => state.auth;
-export const selectUser = (state) => state.auth.user;
-export const selectProfile = (state) => state.auth.profile;
-export const selectIsAuthenticated = (state) => state.auth.isAuthenticated;
-export const selectAuthLoading = (state) => state.auth.loading;
-export const selectAuthError = (state) => state.auth.error;
-export const selectAuthMessage = (state) => state.auth.message;
-export const selectEmailVerificationSent = (state) => state.auth.emailVerificationSent;
-export const selectPasswordResetSent = (state) => state.auth.passwordResetSent;
-export const selectAuthStateChecked = (state) => state.auth.authStateChecked;
 
 export default authSlice.reducer;
