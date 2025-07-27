@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { MaterialIcons } from '@expo/vector-icons';
 import { View, Text, Platform } from 'react-native';
+import { TabParamList, MainStackParamList } from '../types';
 import HomeScreen from '../screens/main/HomeScreen';
 import GalleryScreen from '../screens/main/GalleryScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
@@ -10,59 +11,67 @@ import CameraScreen from '../screens/main/CameraScreen';
 import WidgetSettingsScreen from '../screens/main/WidgetSettingsScreen';
 import PhotoDetailScreen from '../screens/main/PhotoDetailScreen';
 
-const Tab = createBottomTabNavigator();
-const Stack = createStackNavigator();
+const Tab = createBottomTabNavigator<TabParamList>();
+const Stack = createStackNavigator<MainStackParamList>();
 
-const HomeStack = () => {
+interface TabIconProps {
+  iconName: keyof typeof MaterialIcons.glyphMap;
+  color: string;
+  size: number;
+  fallbackText: string;
+  focused?: boolean;
+}
+
+const HomeStack: React.FC = () => {
   return (
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
       }}
     >
-      <Stack.Screen name="HomeMain" component={HomeScreen} />
-      <Stack.Screen name="WidgetSettings" component={WidgetSettingsScreen} />
+      <Stack.Screen name="Home" component={HomeScreen} />
+      <Stack.Screen name="WidgetEditor" component={WidgetSettingsScreen} />
       <Stack.Screen name="Camera" component={CameraScreen} />
     </Stack.Navigator>
   );
 };
 
-const GalleryStack = () => {
+const GalleryStack: React.FC = () => {
   return (
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
       }}
     >
-      <Stack.Screen name="GalleryMain" component={GalleryScreen} />
+      <Stack.Screen name="Gallery" component={GalleryScreen} />
       <Stack.Screen name="PhotoDetail" component={PhotoDetailScreen} />
     </Stack.Navigator>
   );
 };
 
-
-const ProfileStack = () => {
+const ProfileStack: React.FC = () => {
   return (
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
       }}
     >
-      <Stack.Screen name="ProfileMain" component={ProfileScreen} />
+      <Stack.Screen name="Profile" component={ProfileScreen} />
+      <Stack.Screen name="Settings" component={ProfileScreen} />
     </Stack.Navigator>
   );
 };
 
 // Enhanced Tab Icon Component with error handling
-const TabIcon = ({ iconName, color, size, fallbackText }) => {
-  const [hasError, setHasError] = useState(false);
+const TabIcon: React.FC<TabIconProps> = ({ iconName, color, size, fallbackText, focused = false }) => {
+  const [hasError, setHasError] = useState<boolean>(false);
 
   useEffect(() => {
     // Reset error state when props change
     setHasError(false);
   }, [iconName, color, size]);
 
-  const handleIconError = () => {
+  const handleIconError = (): void => {
     console.warn(`Icon rendering failed for: ${iconName}`);
     setHasError(true);
   };
@@ -94,10 +103,11 @@ const TabIcon = ({ iconName, color, size, fallbackText }) => {
   }
 
   try {
+    const iconSize = focused ? size + 2 : size;
     return (
       <MaterialIcons 
         name={iconName} 
-        size={size || 24} 
+        size={iconSize} 
         color={color || '#757575'}
         onError={handleIconError}
       />
@@ -109,12 +119,12 @@ const TabIcon = ({ iconName, color, size, fallbackText }) => {
   }
 };
 
-const MainNavigator = () => {
-  const [iconsLoaded, setIconsLoaded] = useState(false);
+const MainNavigator: React.FC = () => {
+  const [iconsLoaded, setIconsLoaded] = useState<boolean>(false);
 
   useEffect(() => {
     // Preload icon fonts
-    const loadIcons = async () => {
+    const loadIcons = async (): Promise<void> => {
       try {
         // Give time for fonts to load
         setTimeout(() => {
@@ -167,7 +177,8 @@ const MainNavigator = () => {
             <TabIcon 
               iconName="home" 
               color={color} 
-              size={focused ? size + 2 : size} 
+              size={size} 
+              focused={focused}
               fallbackText="⌂"
             />
           ),
@@ -182,8 +193,41 @@ const MainNavigator = () => {
             <TabIcon 
               iconName="photo-library" 
               color={color} 
-              size={focused ? size + 2 : size} 
+              size={size} 
+              focused={focused}
               fallbackText="📷"
+            />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Camera"
+        component={CameraScreen}
+        options={{
+          tabBarLabel: 'Cámara',
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon 
+              iconName="camera-alt" 
+              color={color} 
+              size={size} 
+              focused={focused}
+              fallbackText="📸"
+            />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Widgets"
+        component={WidgetSettingsScreen}
+        options={{
+          tabBarLabel: 'Widgets',
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon 
+              iconName="widgets" 
+              color={color} 
+              size={size} 
+              focused={focused}
+              fallbackText="⚙️"
             />
           ),
         }}
@@ -197,7 +241,8 @@ const MainNavigator = () => {
             <TabIcon 
               iconName="person" 
               color={color} 
-              size={focused ? size + 2 : size} 
+              size={size} 
+              focused={focused}
               fallbackText="👤"
             />
           ),

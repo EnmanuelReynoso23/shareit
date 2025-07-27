@@ -4,7 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { StatusBar, View, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import NetInfo from '@react-native-community/netinfo';
 
 // Store
@@ -21,10 +21,18 @@ import LoadingScreen from './src/components/LoadingScreen';
 import NotificationSystem from './src/components/NotificationSystem';
 import ErrorBoundary from './src/components/ErrorBoundary';
 
+// Types
+export interface AppUser {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+}
+
 const Stack = createStackNavigator();
 
-function AppContent() {
-  const [initializing, setInitializing] = useState(true);
+function AppContent(): React.JSX.Element {
+  const [initializing, setInitializing] = useState<boolean>(true);
   const { user, isAuthenticated, loading, initialized, setUser, clearUser, setAuthLoading } = useAuth();
   const { setNetworkStatus, showNotification } = useUI();
 
@@ -32,7 +40,7 @@ function AppContent() {
     let mounted = true;
 
     // Firebase Auth State Listener
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
       if (!mounted) return;
 
       if (firebaseUser) {
@@ -75,7 +83,7 @@ function AppContent() {
       unsubscribe();
       networkUnsubscribe();
     };
-  }, [initializing, setUser, clearUser, setNetworkStatus, showNotification]);
+  }, [initializing, setUser, clearUser, setNetworkStatus, showNotification, setAuthLoading]);
 
   // Show loading screen while checking auth state
   if (initializing || loading || !initialized) {
@@ -125,7 +133,7 @@ function AppContent() {
   );
 }
 
-export default function App() {
+export default function App(): React.JSX.Element {
   return (
     <ErrorBoundary>
       <Provider store={store}>

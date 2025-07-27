@@ -1,0 +1,7 @@
+{
+  "name": "shareit-electron",
+  "version": "1.0.0",
+  "description": "ShareIt Desktop Application",
+  "main": "main.js",
+  "type": "commonjs"
+}
